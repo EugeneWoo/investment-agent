@@ -10,27 +10,36 @@ from agents.sentiment_agent import SentimentAgent
 from agents.valuation_agent import ValuationAgent
 from models import AgentMessage, DebateResult
 from tools.anthropic import AnthropicClient
+from tools.tavily import TavilyClient
 
 logger = logging.getLogger(__name__)
 
 ELIGIBILITY_SYSTEM_PROMPT = """
 You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI-native startups.
 
-Your job is to determine eligibility. You must evaluate BOTH criteria independently.
+You will be given a company name and web search results from Yahoo Finance and MarketWatch.
+Use the search results as ground truth. Score your confidence (0–100) on each criterion.
 
 CRITERION 1 — PUBLIC LISTING:
-Is the company publicly traded on any stock exchange (NYSE, NASDAQ, LSE, TSX, ASX, etc.)?
-- If you have ANY knowledge that the company has had an IPO or is publicly traded, mark it listed.
-- When in doubt for a well-known company, assume it is listed.
-- Examples of listed companies: Wise (LSE: WISE), Revolut (private — eligible on this criterion), Apple, Google, Meta, Salesforce, Palantir, Snowflake, UiPath, C3.ai.
+Is the company publicly traded on any stock exchange?
+- Look for ticker symbols, stock price data, or exchange names in the search results.
+- A result like "WISE stock" or "NYSE: XYZ" is definitive evidence of listing.
+- If search results show a stock page for this company, it is listed.
 
 CRITERION 2 — AI-NATIVE:
-Is AI core to the company's product? A traditional bank, payments company, pharma, retailer, or manufacturer that uses AI as a supporting tool does NOT qualify. The product itself must be AI-driven.
+Is AI core to the company's product? A bank, payments processor, pharma, retailer, or manufacturer that uses AI as a tool does NOT qualify. The product itself must be AI-driven.
 
-A company is INELIGIBLE if it fails EITHER criterion.
+Rules:
+- Only block if confidence > 80 for that criterion.
+- If search results are inconclusive, score confidence below 80 and allow through.
 
-Think step by step, then respond with ONLY a JSON object — no markdown, no explanation outside the JSON:
-{"eligible": true} or {"eligible": false, "reason": "one sentence citing which criterion failed and why"}
+Respond with ONLY a valid JSON object — no markdown, no text outside the JSON:
+{
+  "listed_confidence": <0-100>,
+  "not_ai_native_confidence": <0-100>,
+  "eligible": <true|false>,
+  "reason": "<one sentence if ineligible, empty string if eligible>"
+}
 """
 
 JUDGE_SYSTEM_PROMPT = """
@@ -66,25 +75,51 @@ class Orchestrator:
         self._llm = AnthropicClient()
 
     def eligibility_check(self, company: str) -> tuple[bool, str]:
-        """Check if a company is eligible for analysis before running agents.
+        """Check eligibility using live search results from Yahoo Finance / MarketWatch.
+
+        Fetches real listing data before asking the LLM, so it can't hallucinate.
+        Only blocks if confidence > 80 on either criterion.
 
         Returns:
             Tuple of (is_eligible, reason). reason is empty string if eligible.
         """
         try:
+            tavily = TavilyClient()
+            results = tavily.search(
+                f'"{company}" stock ticker site:finance.yahoo.com OR site:marketwatch.com',
+                max_results=5,
+            )
+            snippets = "\n\n".join(
+                f"[{r['title']}] ({r['url']})\n{r['content'][:300]}"
+                for r in results
+            ) or "No results found."
+
+            user_message = f"""Company: {company}
+
+Web search results from Yahoo Finance / MarketWatch:
+{snippets}"""
+
             response = self._llm.messages_create(
                 system_prompt=ELIGIBILITY_SYSTEM_PROMPT,
-                user_message=f"Company: {company}",
+                user_message=user_message,
                 max_tokens=256,
             )
-            # Extract the JSON object from the response (may have preceding reasoning text)
             raw = response.strip()
             json_start = raw.rfind("{")
             json_end = raw.rfind("}") + 1
             data = json.loads(raw[json_start:json_end])
-            if data.get("eligible") is True:
-                return True, ""
-            return False, data.get("reason", "Company does not meet eligibility criteria.")
+
+            listed_conf = int(data.get("listed_confidence", 0))
+            not_ai_conf = int(data.get("not_ai_native_confidence", 0))
+            logger.info(
+                f"Eligibility check for '{company}': "
+                f"listed_confidence={listed_conf}, not_ai_native_confidence={not_ai_conf}"
+            )
+
+            if listed_conf > 80 or not_ai_conf > 80:
+                reason = data.get("reason", "Company does not meet eligibility criteria.")
+                return False, reason
+            return True, ""
         except Exception as e:
             logger.warning(f"Eligibility check failed, proceeding anyway: {e}")
             return True, ""
