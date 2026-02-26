@@ -1,0 +1,7 @@
+anthropic
+tavily-python
+praw
+tweepy
+streamlit
+python-dotenv
+tenacity
