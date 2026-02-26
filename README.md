@@ -1,6 +1,6 @@
 # Investment Agent
 
-Multi-agent AI system for analyzing pre-Series A AI startups. Three specialized agents (Search, Sentiment, Valuation) run sequentially to produce a GO / NOGO verdict with full supporting analysis.
+Multi-agent AI system for analyzing Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) run sequentially to produce a GO / NOGO verdict with full supporting analysis.
 
 ## How it works
 

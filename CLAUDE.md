@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Multi-agent stock debate system for pre-Series A AI startup investment analysis. Three specialized agents (Search, Sentiment, Valuation) run in a unified two-phase pipeline: **Phase 1** each agent speaks once (Search → Sentiment → Valuation), **Phase 2** round-robin debate until GO/NOGO consensus (or NO_CONSENSUS if max rounds exceeded). Deployed as a public Streamlit dashboard on Streamlit Community Cloud.
+Multi-agent investment analysis system for Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) run in a two-phase pipeline: **Phase 1** each agent speaks once in sequence (Search → Sentiment → Valuation) to produce a GO/NOGO verdict; **Phase 2** round-robin debate until consensus (future enhancement). Deployed as a public Streamlit dashboard on Streamlit Community Cloud.
 
 ## Tech Stack
 
@@ -43,7 +43,7 @@ mypy .
 investment-agent/
 ├── app.py                     # Streamlit entry point
 ├── agents/
-│   ├── search_agent.py        # Discovers pre-Series A AI startups via Tavily + Crunchbase
+│   ├── search_agent.py        # Discovers Seed-to-Series B AI startups via Tavily + Crunchbase
 │   ├── sentiment_agent.py     # Reflection-enhanced LLM summarization over Reddit/Twitter/news
 │   └── valuation_agent.py     # Estimates annualized return + volatility via comparables
 ├── orchestrator/
