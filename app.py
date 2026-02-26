@@ -90,7 +90,7 @@ def _render_agent_output(agent_name: str, data: dict) -> None:  # type: ignore[t
             st.markdown("**Key risks**: " + " · ".join(_escape_dollars(r) for r in v["key_risks"][:3]))
         if v.get("comparables"):
             st.markdown("**Comparables**: " + ", ".join(
-                f"{c['name']} ({c.get('outcome', '?')})" for c in v["comparables"][:3]
+                _escape_dollars(f"{c['name']} ({c.get('outcome', '?')})") for c in v["comparables"][:3]
             ))
 
     summary_key = next((k for k in data if k.endswith("_summary")), None)
