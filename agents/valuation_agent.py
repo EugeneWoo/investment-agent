@@ -148,13 +148,12 @@ class ValuationAgent:
         searches = [
             f"{company} TAM total addressable market size forecast",
             f"{company} comparable startup exit IPO acquisition outcome",
-            f"{company} ARR revenue customers paying traction",
-            f"{company} pre-money valuation cap table dilution",
+            f"{company} ARR revenue customers traction growth",
         ]
 
         query_results: dict[str, list] = {}
         with ThreadPoolExecutor(max_workers=len(searches)) as executor:
-            future_to_query = {executor.submit(self._tavily.search, q, 5): q for q in searches}
+            future_to_query = {executor.submit(self._tavily.search, q, 3): q for q in searches}
             for future in as_completed(future_to_query):
                 query = future_to_query[future]
                 query_results[query] = future.result()

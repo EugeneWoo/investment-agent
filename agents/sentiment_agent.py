@@ -139,15 +139,14 @@ class SentimentAgent:
 
     def _gather_research(self, company: str) -> str:
         searches = [
-            f"{company} TechCrunch Wired Forbes VentureBeat article",
+            f"{company} TechCrunch Forbes VentureBeat article review",
             f"{company} site:reddit.com OR site:news.ycombinator.com discussion",
-            f"{company} founder CEO controversy lawsuit negative press",
             f"{company} partnership award hiring milestone 2025 2026",
         ]
 
         query_results: dict[str, list] = {}
         with ThreadPoolExecutor(max_workers=len(searches)) as executor:
-            future_to_query = {executor.submit(self._tavily.search, q, 5): q for q in searches}
+            future_to_query = {executor.submit(self._tavily.search, q, 3): q for q in searches}
             for future in as_completed(future_to_query):
                 query = future_to_query[future]
                 query_results[query] = future.result()

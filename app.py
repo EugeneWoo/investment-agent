@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import streamlit as st
 
@@ -202,17 +203,15 @@ if run_btn and company:
             sentiment_agent = SentimentAgent(risk_tolerance)
             valuation_agent = ValuationAgent(risk_tolerance)
 
-            st.write("🔍 Search Agent: analyzing founders and market gap...")
-            search_msg = search_agent.run(company, risk_tolerance)
-            st.write("✓ Search Agent complete")
-
-            st.write("📰 Sentiment Agent: analyzing press and community...")
-            sentiment_msg = sentiment_agent.run(company, risk_tolerance)
-            st.write("✓ Sentiment Agent complete")
-
-            st.write("📊 Valuation Agent: analyzing market size and comparables...")
-            valuation_msg = valuation_agent.run(company, risk_tolerance)
-            st.write("✓ Valuation Agent complete")
+            st.write("🔍 📰 📊 Running all 3 agents in parallel...")
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                f_search = executor.submit(search_agent.run, company, risk_tolerance)
+                f_sentiment = executor.submit(sentiment_agent.run, company, risk_tolerance)
+                f_valuation = executor.submit(valuation_agent.run, company, risk_tolerance)
+                search_msg = f_search.result()
+                sentiment_msg = f_sentiment.result()
+                valuation_msg = f_valuation.result()
+            st.write("✓ All agents complete")
 
             st.write("⚖️ Judge: reviewing all three reports...")
             phase1_messages = [search_msg, sentiment_msg, valuation_msg]

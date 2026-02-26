@@ -199,14 +199,13 @@ class SearchAgent:
         searches = [
             f"{company} product technology how it works use case",
             f"{company} funding round seed investors announced",
-            f"{company} CEO CTO founder LinkedIn biography",
-            f"{company} prior exits acquisitions track record domain expertise",
+            f"{company} CEO CTO founder LinkedIn biography background",
             f"{company} competitors landscape alternatives differentiation",
         ]
 
         query_results: dict[str, list] = {}
         with ThreadPoolExecutor(max_workers=len(searches)) as executor:
-            future_to_query = {executor.submit(self._tavily.search, q, 5): q for q in searches}
+            future_to_query = {executor.submit(self._tavily.search, q, 3): q for q in searches}
             for future in as_completed(future_to_query):
                 query = future_to_query[future]
                 query_results[query] = future.result()
@@ -236,7 +235,7 @@ Produce the complete JSON analysis per your instructions."""
             response = self._llm.messages_create(
                 system_prompt=system_prompt,
                 user_message=user_message,
-                max_tokens=4096,
+                max_tokens=2048,
             )
             # Strip markdown code fences if present
             cleaned = response.strip()
