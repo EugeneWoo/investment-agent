@@ -241,9 +241,9 @@ if "debate_result" in st.session_state:
 
     verdict = result.verdict
     if verdict == "GO":
-        st.success("## ✅ GO — Recommend Investing", icon="✅")
+        st.success("## GO — Recommend Investing")
     else:
-        st.error("## ❌ NO-GO — Pass on this investment", icon="❌")
+        st.error("## NO-GO — Pass on this investment")
 
     # Judge rationale
     judge_msgs = [m for m in result.messages if m.role == "judge"]
