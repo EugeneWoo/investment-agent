@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Multi-agent investment analysis system for Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) run in a two-phase pipeline: **Phase 1** each agent speaks once in sequence (Search → Sentiment → Valuation) to produce a GO/NOGO verdict; **Phase 2** round-robin debate until consensus (future enhancement). Deployed as a public Streamlit dashboard on Streamlit Community Cloud.
+Multi-agent investment analysis system for Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) each independently research a startup, then a fourth **Judge** LLM synthesizes their reports into a GO/NOGO verdict. This is **Phase 1**. **Phase 2** (round-robin debate until consensus) is a future enhancement. Deployed as a public Streamlit dashboard on Streamlit Community Cloud.
 
 ## Tech Stack
 
@@ -68,7 +68,7 @@ investment-agent/
 
 - **Agent pattern:** Each agent is a Python class with `__init__(risk_tolerance)` that builds the system prompt, and `run(context, risk_tolerance) -> AgentMessage`
 - **Risk tolerance:** Injected into system prompts at instantiation (`risk_neutral` | `risk_averse`) — not hardcoded
-- **Orchestrator pipeline:** Single `Orchestrator.run(company, risk_tolerance)` method — Phase 1 runs each agent once in sequence, Phase 2 runs round-robin debate until consensus
+- **Orchestrator pipeline:** Single `Orchestrator.run(company, risk_tolerance)` method — Phase 1 runs each agent independently (no shared context), then a Judge LLM reads all three reports and issues GO/NOGO; Phase 2 debate is a future enhancement
 - **Structured output:** All inter-agent data uses `AgentMessage` and `DebateResult` dataclasses — no bare dicts
 - **Consensus:** Debate mode requires all agents to agree on GO/NOGO; exceeding `max_rounds` returns `NO_CONSENSUS`
 - **Session state keys:** `st.session_state["debate_result"]`, `["agent_messages"]`, `["run_config"]`

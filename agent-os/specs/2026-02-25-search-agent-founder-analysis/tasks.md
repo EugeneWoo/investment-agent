@@ -5,7 +5,7 @@
 Total task groups: 8
 Total tasks: 40
 
-The Search Agent is the **first step in the Phase 1 sequential analysis pipeline**. It runs once, produces a structured `AgentMessage`, and passes context to the Sentiment Agent. Phase 2 debate is out of scope here.
+The Search Agent is one of three **independent analysts** in the Phase 1 pipeline. It runs once and produces a structured `AgentMessage`. The agents do not share context — all three outputs are fed to a Judge LLM which issues the final GO/NOGO verdict. Phase 2 debate is out of scope here.
 
 **Group dependencies:**
 - Group 0 (Environment Setup) — must be completed first; required before any development
@@ -244,7 +244,7 @@ The Search Agent is the **first step in the Phase 1 sequential analysis pipeline
 **3.1** Create `agents/search_agent.py` with module-level imports: `anthropic`, `logging`, `typing` (`Any`), and import `AgentMessage` from `models`, `CrunchbaseClient` from `tools.crunchbase`, `TavilyClient` from `tools.tavily`, `settings` from `config`.
 
 **3.2** Write `SEARCH_AGENT_SYSTEM_PROMPT_RISK_NEUTRAL` as a module-level constant (multiline f-string or triple-quoted string) with:
-  - Agent role definition: "You are the Search Agent, the first step in a sequential investment analysis pipeline. You specialize in discovering pre-Series A AI startups and analyzing founder quality and market gaps. Your output will be used by the Sentiment Agent and Valuation Agent."
+  - Agent role definition: "You are the Search Agent, an independent analyst in a multi-agent investment pipeline. You specialize in discovering Seed-to-Series B AI startups and analyzing founder quality and market gaps. Your report will be read by a Judge LLM alongside two other independent agents to produce a GO/NOGO verdict."
   - Scoring rubrics for all scores (0-100 scale) with anchor examples
   - Instructions for balanced assessment, optimistic interpretation of ambiguity
   - JSON output format specification matching the spec structure

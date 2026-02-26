@@ -1,10 +1,10 @@
 # Investment Agent
 
-Multi-agent AI system for analyzing Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) run sequentially to produce a GO / NOGO verdict with full supporting analysis.
+Multi-agent AI system for analyzing Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) each independently research a startup, then a fourth Judge LLM synthesizes their reports into a GO / NOGO verdict.
 
 ## How it works
 
-**Phase 1 — Analysis** *(primary)*: Each agent runs once in sequence (Search → Sentiment → Valuation), building on the prior agent's findings. This produces the final verdict.
+**Phase 1 — Analysis** *(primary)*: Three agents run independently in parallel-style (Search → Sentiment → Valuation), each researching the startup separately with no shared context. A fourth **Judge** LLM then reads all three reports and issues the final GO / NOGO verdict.
 
 **Phase 2 — Debate** *(future enhancement)*: Agents debate in round-robin until all agree on GO or NOGO. If `max_rounds` is exceeded without consensus, the result is NO_CONSENSUS.
 
@@ -110,7 +110,7 @@ investment-agent/
 │   ├── sentiment_agent.py     # Press, community, and momentum analysis via Tavily
 │   └── valuation_agent.py     # TAM, comparables, and return potential via Tavily
 ├── orchestrator/
-│   └── orchestrator.py        # Phase 1 sequential analysis pipeline; Phase 2 debate (future)
+│   └── orchestrator.py        # Phase 1: 3 independent agents → Judge verdict; Phase 2 debate (future)
 ├── tools/
 │   ├── anthropic.py           # Anthropic Claude client with retry
 │   └── tavily.py              # Tavily web search client with caching and retry

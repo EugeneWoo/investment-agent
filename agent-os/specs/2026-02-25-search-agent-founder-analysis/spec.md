@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the Search Agent as the first agent in the Phase 1 sequential analysis pipeline. The Search Agent discovers pre-Series A AI startups via Tavily web search and Crunchbase API, then performs comprehensive analysis on two critical dimensions: **founder quality** (experience relevance, team complementarity, full-time commitment) and **market gap validation** (product differentiation, competitive landscape, defensibility, bandwagon risk detection). The agent outputs structured scores and qualitative narratives as an `AgentMessage` that feeds into the next agent in the pipeline (Sentiment Agent).
+Implement the Search Agent as one of three independent analysts in the Phase 1 pipeline. The Search Agent discovers Seed-to-Series B AI startups via Tavily web search and Crunchbase API, then performs comprehensive analysis on two critical dimensions: **founder quality** (experience relevance, team complementarity, full-time commitment) and **market gap validation** (product differentiation, competitive landscape, defensibility, bandwagon risk detection). The agent outputs structured scores and qualitative narratives as an `AgentMessage` that is passed directly to the Judge alongside the Sentiment and Valuation Agent outputs — agents do not share context with each other.
 
 ## User Stories
 
@@ -10,7 +10,7 @@ Implement the Search Agent as the first agent in the Phase 1 sequential analysis
 - As an investor, I want the Search Agent to detect LLM wrapper startups so that I can avoid "me-too" products that lack genuine innovation.
 - As an investor, I want the Search Agent to assess competitive moats so that I can understand if the startup has defensible differentiation.
 - As a system user, I want quantitative scores (0-100) alongside qualitative narratives so that I can quickly compare startups and dive deep when needed.
-- As a developer, I want the Search Agent output to be a well-structured `AgentMessage` that the Sentiment Agent and Valuation Agent can build on in Phase 1.
+- As a developer, I want the Search Agent output to be a well-structured `AgentMessage` that the Judge can synthesize alongside the Sentiment and Valuation Agent outputs.
 - As a developer, I want competitor research cached across startups in the same sector so that Tavily API costs are controlled.
 
 ## Specific Requirements
@@ -200,7 +200,7 @@ The `content` field of `AgentMessage` should contain JSON-structured data:
 
 **Field Definitions**
 - All scores are integers 0-100, or `null` if unable to determine
-- `search_agent_summary` is a concise 2-3 sentence synthesis for the Sentiment and Valuation agents to build on
+- `search_agent_summary` is a concise 2-3 sentence synthesis for the Judge to weigh alongside the other agents' reports
 - All narratives should cite specific evidence (e.g., "Founder X previously led ML at Google" not "founder has good experience")
 
 ### System Prompts
