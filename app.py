@@ -141,6 +141,10 @@ def _generate_report(result: DebateResult, config_used: dict) -> str:  # type: i
 # --- Page setup ---
 
 st.set_page_config(page_title="Investment Agent", layout="wide")
+st.markdown(
+    "<style>[data-testid='stSidebar'] { min-width: 220px; max-width: 220px; }</style>",
+    unsafe_allow_html=True,
+)
 st.title("Investment Agent")
 st.caption("Multi-agent analysis for Seed-to-Series B AI startups")
 
