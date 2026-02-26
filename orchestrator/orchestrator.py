@@ -13,6 +13,17 @@ from tools.anthropic import AnthropicClient
 
 logger = logging.getLogger(__name__)
 
+ELIGIBILITY_SYSTEM_PROMPT = """
+You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI-native startups.
+
+Determine whether the given company is eligible for analysis. A company is INELIGIBLE if ANY of these are true:
+1. It is publicly listed / traded on a stock exchange (NYSE, NASDAQ, LSE, etc.)
+2. It is not AI-native — meaning AI is not core to its product (e.g. a traditional bank, pharma, retailer, or manufacturer that uses AI peripherally does not qualify)
+
+Respond with ONLY a JSON object, no markdown, no explanation:
+{"eligible": true} or {"eligible": false, "reason": "one sentence explaining why"}
+"""
+
 JUDGE_SYSTEM_PROMPT = """
 You are an investment Judge for Seed-to-Series B AI startups.
 
@@ -44,6 +55,26 @@ class Orchestrator:
         self._sentiment = SentimentAgent(risk_tolerance)
         self._valuation = ValuationAgent(risk_tolerance)
         self._llm = AnthropicClient()
+
+    def eligibility_check(self, company: str) -> tuple[bool, str]:
+        """Check if a company is eligible for analysis before running agents.
+
+        Returns:
+            Tuple of (is_eligible, reason). reason is empty string if eligible.
+        """
+        try:
+            response = self._llm.messages_create(
+                system_prompt=ELIGIBILITY_SYSTEM_PROMPT,
+                user_message=f"Company: {company}",
+                max_tokens=128,
+            )
+            data = json.loads(response.strip())
+            if data.get("eligible") is True:
+                return True, ""
+            return False, data.get("reason", "Company does not meet eligibility criteria.")
+        except Exception as e:
+            logger.warning(f"Eligibility check failed, proceeding anyway: {e}")
+            return True, ""
 
     def run(self, company: str, risk_tolerance: str | None = None) -> DebateResult:
         """Run independent agent analysis then Judge verdict.

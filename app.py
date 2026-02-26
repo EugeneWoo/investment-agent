@@ -191,6 +191,13 @@ if run_btn and company:
         try:
             orchestrator = Orchestrator(risk_tolerance=risk_tolerance)
 
+            st.write("Checking eligibility...")
+            eligible, ineligible_reason = orchestrator.eligibility_check(company)
+            if not eligible:
+                status.update(label="Company not eligible", state="error")
+                st.error(f"**Not eligible for analysis:** {ineligible_reason}")
+                st.stop()
+
             search_agent = SearchAgent(risk_tolerance)
             sentiment_agent = SentimentAgent(risk_tolerance)
             valuation_agent = ValuationAgent(risk_tolerance)
