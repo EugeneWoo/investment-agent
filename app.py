@@ -168,9 +168,10 @@ _placeholder = "e.g. Anthropic, Harvey AI" if input_mode == "company" else "e.g.
 company = st.text_input(
     "Company name" if input_mode == "company" else "Topic or space",
     placeholder=_placeholder,
+    key="company_input",
 )
 
-run_btn = st.button("Analyze", type="primary", disabled=not company)
+run_btn = st.button("Analyze", type="primary", disabled=not st.session_state.get("company_input", "").strip())
 
 # --- Run analysis ---
 if run_btn and company:
