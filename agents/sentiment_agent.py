@@ -139,9 +139,8 @@ class SentimentAgent:
 
     def _gather_research(self, company: str) -> str:
         searches = [
-            f"{company} TechCrunch Forbes VentureBeat article review",
+            f"{company} press coverage news review partnership milestone 2025 2026",
             f"{company} site:reddit.com OR site:news.ycombinator.com discussion",
-            f"{company} partnership award hiring milestone 2025 2026",
         ]
 
         query_results: dict[str, list] = {}

@@ -147,8 +147,7 @@ class ValuationAgent:
     def _gather_research(self, company: str) -> str:
         searches = [
             f"{company} TAM total addressable market size forecast",
-            f"{company} comparable startup exit IPO acquisition outcome",
-            f"{company} ARR revenue customers traction growth",
+            f"{company} comparable startup exit IPO acquisition ARR revenue traction",
         ]
 
         query_results: dict[str, list] = {}

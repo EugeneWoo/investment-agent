@@ -197,10 +197,9 @@ class SearchAgent:
     def _gather_research(self, company: str) -> str:
         """Run Tavily searches in parallel to gather company, founder, and competitor data."""
         searches = [
-            f"{company} product technology how it works use case",
+            f"{company} product technology use case competitors differentiation",
             f"{company} funding round seed investors announced",
             f"{company} CEO CTO founder LinkedIn biography background",
-            f"{company} competitors landscape alternatives differentiation",
         ]
 
         query_results: dict[str, list] = {}

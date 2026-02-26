@@ -87,7 +87,7 @@ class Orchestrator:
             tavily = TavilyClient()
             results = tavily.search(
                 f'"{company}" stock ticker site:finance.yahoo.com OR site:marketwatch.com',
-                max_results=5,
+                max_results=3,
             )
             snippets = "\n\n".join(
                 f"[{r['title']}] ({r['url']})\n{r['content'][:300]}"
