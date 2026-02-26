@@ -16,12 +16,21 @@ logger = logging.getLogger(__name__)
 ELIGIBILITY_SYSTEM_PROMPT = """
 You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI-native startups.
 
-Determine whether the given company is eligible for analysis. A company is INELIGIBLE if ANY of these are true:
-1. It is publicly listed / traded on a stock exchange (NYSE, NASDAQ, LSE, etc.)
-2. It is not AI-native — meaning AI is not core to its product (e.g. a traditional bank, pharma, retailer, or manufacturer that uses AI peripherally does not qualify)
+Your job is to determine eligibility. You must evaluate BOTH criteria independently.
 
-Respond with ONLY a JSON object, no markdown, no explanation:
-{"eligible": true} or {"eligible": false, "reason": "one sentence explaining why"}
+CRITERION 1 — PUBLIC LISTING:
+Is the company publicly traded on any stock exchange (NYSE, NASDAQ, LSE, TSX, ASX, etc.)?
+- If you have ANY knowledge that the company has had an IPO or is publicly traded, mark it listed.
+- When in doubt for a well-known company, assume it is listed.
+- Examples of listed companies: Wise (LSE: WISE), Revolut (private — eligible on this criterion), Apple, Google, Meta, Salesforce, Palantir, Snowflake, UiPath, C3.ai.
+
+CRITERION 2 — AI-NATIVE:
+Is AI core to the company's product? A traditional bank, payments company, pharma, retailer, or manufacturer that uses AI as a supporting tool does NOT qualify. The product itself must be AI-driven.
+
+A company is INELIGIBLE if it fails EITHER criterion.
+
+Think step by step, then respond with ONLY a JSON object — no markdown, no explanation outside the JSON:
+{"eligible": true} or {"eligible": false, "reason": "one sentence citing which criterion failed and why"}
 """
 
 JUDGE_SYSTEM_PROMPT = """
@@ -66,9 +75,13 @@ class Orchestrator:
             response = self._llm.messages_create(
                 system_prompt=ELIGIBILITY_SYSTEM_PROMPT,
                 user_message=f"Company: {company}",
-                max_tokens=128,
+                max_tokens=256,
             )
-            data = json.loads(response.strip())
+            # Extract the JSON object from the response (may have preceding reasoning text)
+            raw = response.strip()
+            json_start = raw.rfind("{")
+            json_end = raw.rfind("}") + 1
+            data = json.loads(raw[json_start:json_end])
             if data.get("eligible") is True:
                 return True, ""
             return False, data.get("reason", "Company does not meet eligibility criteria.")
