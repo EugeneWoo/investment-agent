@@ -1,0 +1,1 @@
+Project Scaffold and Secrets Management — Set up the Python 3.11+ project with `pyproject.toml`, `uv` package management, `ruff`/`mypy` linting, `pytest` test structure, and `.streamlit/secrets.toml` local secrets wiring. Verify all API keys (Anthropic, Tavily, Crunchbase, Reddit, Twitter/X) are loadable and validated at startup.

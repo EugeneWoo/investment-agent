@@ -1,0 +1,40 @@
+[project]
+name = "investment-agent"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Multi-agent stock debate system for pre-Series A AI startup investment analysis"
+dependencies = [
+    "anthropic",
+    "tavily-python",
+    "praw",
+    "tweepy",
+    "streamlit",
+    "python-dotenv",
+    "tenacity",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "ruff",
+    "mypy",
+    "types-requests",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]  # line length — not enforced for prompt strings
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+exclude = ["^tests/.*\\.py$"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
