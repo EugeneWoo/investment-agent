@@ -154,6 +154,22 @@ Cite specific evidence. Flag concerns explicitly. Use null for unknown numeric f
 """
 
 
+def _extract_json(text: str) -> str:
+    """Extract JSON from LLM response, stripping markdown fences and surrounding text."""
+    text = text.strip()
+    # Strip ```json ... ``` or ``` ... ``` fences
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+        text = text.rsplit("```", 1)[0].strip()
+    # If still not starting with {, find the first { and last }
+    if not text.startswith("{"):
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1:
+            text = text[start : end + 1]
+    return text
+
+
 class SearchAgent:
     """Discovers and analyzes Seed-to-Series B AI startups via web search and LLM reasoning."""
 
@@ -234,13 +250,9 @@ Produce the complete JSON analysis per your instructions."""
             response = self._llm.messages_create(
                 system_prompt=system_prompt,
                 user_message=user_message,
-                max_tokens=2048,
+                max_tokens=4096,
             )
-            # Strip markdown code fences if present
-            cleaned = response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[-1]
-                cleaned = cleaned.rsplit("```", 1)[0].strip()
+            cleaned = _extract_json(response)
             json.loads(cleaned)
             return cleaned
         except json.JSONDecodeError:
