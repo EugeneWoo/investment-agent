@@ -32,13 +32,14 @@ Is AI core to the company's product? A bank, payments processor, pharma, retaile
 Rules:
 - Only block if confidence > 80 for that criterion.
 - If search results are inconclusive, score confidence below 80 and allow through.
+- The "reason" field must mention ONLY the criterion that caused the block. Do not mention listing status unless listed_confidence > 80 caused the block.
 
 Respond with ONLY a valid JSON object — no markdown, no text outside the JSON:
 {
   "listed_confidence": <0-100>,
   "not_ai_native_confidence": <0-100>,
   "eligible": <true|false>,
-  "reason": "<one sentence if ineligible, empty string if eligible>"
+  "reason": "<one sentence citing only the blocking criterion if ineligible, empty string if eligible>"
 }
 """
 
