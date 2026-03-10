@@ -541,11 +541,16 @@ def _run_debate_mode() -> None:
 
         verdict = result.verdict
 
-        # Build verdict text with consensus/agent summary inline
-        if result.consensus_reached:
-            consensus_line = f"✓ Consensus in {result.rounds} round(s)"
-            verdict_body = consensus_line
+        if verdict == "GO":
+            st.success("GO — Recommend Investing")
         else:
+            st.error("NO-GO — Pass on this investment")
+
+        if result.consensus_reached:
+            st.caption(f"✓ Consensus in {result.rounds} round(s)")
+        else:
+            st.caption(f"⚠ No consensus after {result.rounds} round(s) — majority vote")
+
             debate_msgs = [m for m in result.messages if m.role == "debate"]
             last_positions: dict[str, dict] = {}
             for m in debate_msgs:
@@ -553,18 +558,15 @@ def _run_debate_mode() -> None:
                     last_positions[m.agent_name] = json.loads(m.content)
                 except (json.JSONDecodeError, KeyError):
                     pass
-            agent_lines = [
-                f"{'🟢' if d.get('position') == 'GO' else '🔴'} {name}: {d.get('position','?')} ({d.get('confidence',0):.0%}) — {d.get('rationale','').strip()}"
-                for name, d in last_positions.items()
-            ]
-            verdict_body = "⚠ No consensus after {} round(s) — majority vote\n{}".format(
-                result.rounds, "\n".join(agent_lines)
-            )
 
-        if verdict == "GO":
-            st.success(f"GO — Recommend Investing\n{verdict_body}")
-        else:
-            st.error(f"NO-GO — Pass on this investment\n{verdict_body}")
+            for name, d in last_positions.items():
+                pos = d.get("position", "?")
+                conf = d.get("confidence", 0)
+                # Use only the first sentence of the rationale
+                rationale = d.get("rationale", "").strip()
+                short = rationale.split(".")[0].strip() + "." if rationale else ""
+                icon = "🟢" if pos == "GO" else "🔴"
+                st.markdown(f"{icon} **{name}**: {pos} ({conf:.0%}) — {short}")
 
         if verdict == "GO" and result.recommendations:
             st.divider()
