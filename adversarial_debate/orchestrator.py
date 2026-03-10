@@ -54,9 +54,9 @@ class DebateOrchestrator:
     def eligibility_check(self, company: str) -> tuple[bool, str]:
         """Check eligibility using live search results.
 
-        Delegates to base orchestrator, which performs two searches:
-        1. Public listing check (Yahoo Finance / MarketWatch)
-        2. Product/website search to evaluate AI-native criteria
+        Delegates to base orchestrator, which performs a single comprehensive
+        search covering both listing status and product information. This ensures
+        identical results for proper A/B testing between base and debate modes.
 
         Only blocks if confidence > 80 on either criterion.
 

@@ -17,27 +17,24 @@ logger = logging.getLogger(__name__)
 ELIGIBILITY_SYSTEM_PROMPT = """
 You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI startups and companies that have meaningfully integrated AI/LLMs into their products.
 
-You will be given a company name and two types of web search results:
-1. Public Listing Check (Yahoo Finance / MarketWatch) — to determine if the company is publicly traded
-2. Product/Website Information — to understand what the company actually does
-
+You will be given a company name and web search results covering both listing status and product information.
 Use the search results as ground truth. Score your confidence (0–100) on each criterion.
 
 CRITERION 1 — PUBLIC LISTING:
 Is the company publicly traded on any stock exchange?
-- Look for ticker symbols, stock price data, or exchange names in the "Public Listing Check" section.
+- Look for ticker symbols, stock price data, or exchange names in the search results.
 - A result like "WISE stock" or "NYSE: XYZ" is definitive evidence of listing.
 - If search results show a stock page for this company, it is listed.
 
 CRITERION 2 — AI-NATIVE:
-Does the company qualify under any of these definitions? Use the "Product/Website Information" section to evaluate.
+Does the company qualify under any of these definitions?
 - QUALIFIES: The product itself is AI-driven (e.g. an LLM assistant, AI coding tool, AI image generator).
 - QUALIFIES: The company launched an LLM-powered product or feature from 2025 onward that is central to its offering.
 - QUALIFIES: The company has heavily integrated LLMs into its core product internally (e.g. AI-powered workflows, LLM-driven automation that defines the product experience).
 - DOES NOT QUALIFY: A bank, marketplace, payments processor, pharma, retailer, or manufacturer that merely uses AI as a peripheral tool or for internal employee productivity with no meaningful product integration.
 - DOES NOT QUALIFY: Traditional cybersecurity, IoT, or infrastructure companies that use AI/ML as one feature among many rather than being AI-native.
 
-Score not_ai_native_confidence HIGH (>80) only if the company clearly does not meet any of the above definitions based on the product information provided.
+Score not_ai_native_confidence HIGH (>80) only if the company clearly does not meet any of the above definitions.
 
 Rules:
 - Only block if confidence > 80 for that criterion.
@@ -86,10 +83,10 @@ class Orchestrator:
         self._llm = AnthropicClient()
 
     def eligibility_check(self, company: str) -> tuple[bool, str]:
-        """Check eligibility using live search results from Yahoo Finance / MarketWatch.
+        """Check eligibility using a single comprehensive web search.
 
-        Fetches real listing data before asking the LLM, so it can't hallucinate.
-        Also searches for the company's website to evaluate AI-native criteria.
+        Fetches listing data and product information in one search to ensure
+        consistent results across base and debate orchestrators for A/B testing.
         Only blocks if confidence > 80 on either criterion.
 
         Returns:
@@ -98,35 +95,23 @@ class Orchestrator:
         try:
             tavily = TavilyClient()
 
-            # Search 1: Check if publicly traded (Yahoo Finance / MarketWatch)
-            listing_results = tavily.search(
-                f'"{company}" stock ticker site:finance.yahoo.com OR site:marketwatch.com',
-                max_results=3,
+            # Single comprehensive search for both listing and product information
+            # This ensures identical results for base and debate orchestrators
+            results = tavily.search(
+                f'"{company}" stock ticker public listing product description',
+                max_results=6,  # Get more results to cover both criteria
             )
 
-            # Search 2: Get product/website information to evaluate AI-native criteria
-            product_results = tavily.search(
-                f'"{company}" official website product description',
-                max_results=3,
-            )
-
-            snippets = []
-            snippets.append("### Public Listing Check (Yahoo Finance / MarketWatch)")
-            snippets.append("\n\n".join(
-                f"[{r['title']}] ({r['url']})\n{r['content'][:300]}"
-                for r in listing_results
-            ) or "No results found.")
-
-            snippets.append("\n\n### Product/Website Information")
-            snippets.append("\n\n".join(
-                f"[{r['title']}] ({r['url']})\n{r['content'][:300]}"
-                for r in product_results
-            ) or "No results found.")
+            # Format all search results together
+            snippets = "\n\n".join(
+                f"[{r['title']}] ({r['url']})\n{r['content'][:400]}"
+                for r in results
+            ) or "No results found."
 
             user_message = f"""Company: {company}
 
 Web search results:
-{"\n\n".join(snippets)}"""
+{snippets}"""
 
             response = self._llm.messages_create(
                 system_prompt=ELIGIBILITY_SYSTEM_PROMPT,
