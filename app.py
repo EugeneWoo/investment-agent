@@ -295,7 +295,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("Investment Agents")
-st.markdown("<p style='font-size:2em; color:gray;'>Multi-agent analysis for Seed-to-Series B AI startups</p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size:1.4em; color:gray;'>Multi-agent analysis for Seed-to-Series B AI startups</p>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Mode selector
