@@ -18,3 +18,9 @@ build/
 
 # uv
 # uv.lock is intentionally committed — do not add it here
+
+# Local tooling
+.claude/
+.vscode/
+agentic-os/
+agentic-test/

@@ -234,11 +234,11 @@ def _render_debate_rounds(result: DebateResult) -> None:
                     challenges = data.get("challenges", [])
 
                     position_color = "🟢" if position == "GO" else "🔴"
-                    st.markdown(f"**Position**: {position_color} {position} (confidence: {confidence:.1%})")
+                    st.markdown(f"**Debate stance**: {position_color} {position} (confidence: {confidence:.1%})")
                     if rationale:
-                        st.markdown(_escape_dollars(rationale))
+                        st.markdown(f"**Rationale**: {_escape_dollars(rationale)}")
                     if challenges:
-                        st.markdown("**Challenges**:")
+                        st.markdown("**Challenges to other agents**:")
                         for c in challenges:
                             st.markdown(f"- {_escape_dollars(c)}")
                     st.markdown("---")
@@ -254,7 +254,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("Investment Agent — Adversarial Debate")
-st.caption("Multi-agent analysis with round-robin adversarial debate")
+st.caption("Multi-agent analysis for Seed-to-Series B AI startups, with round-robin debate until consensus or maximum rounds is reached")
 
 # --- Sidebar ---
 with st.sidebar:

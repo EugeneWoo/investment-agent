@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, TypeAlias
 
 from models import AgentMessage, DebateResult
@@ -244,10 +245,14 @@ class DebateOrchestrator:
         if status_callback:
             status_callback("Running Phase 1: independent agent analysis...")
 
-        # Get Phase 1 messages from base agents
-        search_msg = self._search_debate.base_agent.run(company, rt)
-        sentiment_msg = self._sentiment_debate.base_agent.run(company, rt)
-        valuation_msg = self._valuation_debate.base_agent.run(company, rt)
+        # Get Phase 1 messages from base agents — run in parallel
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            f_search = executor.submit(self._search_debate.base_agent.run, company, rt)
+            f_sentiment = executor.submit(self._sentiment_debate.base_agent.run, company, rt)
+            f_valuation = executor.submit(self._valuation_debate.base_agent.run, company, rt)
+            search_msg = f_search.result()
+            sentiment_msg = f_sentiment.result()
+            valuation_msg = f_valuation.result()
 
         phase1_messages = [search_msg, sentiment_msg, valuation_msg]
         phase1_map = {msg.agent_name: msg for msg in phase1_messages}

@@ -105,11 +105,12 @@ class Orchestrator:
         self._llm = AnthropicClient()
 
     def eligibility_check(self, company: str) -> tuple[bool, str]:
-        """Check eligibility using a single comprehensive web search.
+        """Check eligibility using two complementary web searches.
 
-        Fetches listing data and product information in one search to ensure
-        consistent results across base and debate orchestrators for A/B testing.
-        Only blocks if confidence > 80 on either criterion.
+        Search 1: Crunchbase-focused for authoritative funding/product data.
+        Search 2: Broad news search targeting Series C+ and IPO keywords, since
+        Crunchbase profile pages are paywalled and Tavily cannot scrape them.
+        Only blocks if confidence > 80 on any criterion.
 
         Returns:
             Tuple of (is_eligible, reason). reason is empty string if eligible.
@@ -117,17 +118,25 @@ class Orchestrator:
         try:
             tavily = TavilyClient()
 
-            # Single comprehensive search — include Crunchbase to get authoritative funding stage data
-            results = tavily.search(
+            # Search 1: Crunchbase-focused for authoritative funding stage data
+            crunchbase_results = tavily.search(
                 f'"{company}" funding raised private company product AI',
-                max_results=8,
+                max_results=5,
                 include_domains=["crunchbase.com"],
             )
+
+            # Search 2: Broad news search for latest funding round — catches Series C+ that Crunchbase paywalls
+            news_results = tavily.search(
+                f'"{company}" "Series C" OR "Series D" OR "Series E" OR IPO OR "went public" funding round',
+                max_results=5,
+            )
+
+            all_results = crunchbase_results + news_results
 
             # Format all search results together
             snippets = "\n\n".join(
                 f"[{r['title']}] ({r['url']})\n{r['content'][:400]}"
-                for r in results
+                for r in all_results
             ) or "No results found."
 
             user_message = f"""Company: {company}
