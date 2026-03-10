@@ -138,9 +138,6 @@ class DebateOrchestrator:
         debate_history: list[dict] = []
         round_number = 1
 
-        # Format Phase 1 analysis for each agent
-        phase1_summary = self._base_orchestrator._format_phase1_summary(list(phase1_map.values()))
-
         while round_number <= self.max_rounds:
             round_positions: list[DebatePosition] = []
 

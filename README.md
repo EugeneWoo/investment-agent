@@ -1,12 +1,12 @@
 # Investment Agent
 
-Multi-agent AI system for analyzing Seed-to-Series B AI startups. Three specialized agents (Search, Sentiment, Valuation) each independently research a startup, then a fourth Judge LLM synthesizes their reports into a GO / NOGO verdict.
+Multi-agent AI system for analyzing Seed-to-Series B AI startups. Two modes available:
 
 ## How it works
 
-**Phase 1 — Analysis** *(primary)*: Three agents run independently in parallel-style (Search → Sentiment → Valuation), each researching the startup separately with no shared context. A fourth **Judge** LLM then reads all three reports and issues the final GO / NOGO verdict.
+**Judge mode** (`app.py`): Three agents (Search, Sentiment, Valuation) each independently research the startup with no shared context. A fourth **Judge** LLM reads all three reports and issues the final GO / NOGO verdict.
 
-**Phase 2 — Debate** *(future enhancement)*: Agents debate in round-robin until all agree on GO or NOGO. If `max_rounds` is exceeded without consensus, the result is NO_CONSENSUS.
+**Debate mode** (`adversarial_debate/app_debate.py`): Same three agents run Phase 1, then debate in round-robin (Search → Sentiment → Valuation, repeat) until all agree on GO or NOGO. If `max_rounds` is exceeded without consensus, majority vote across all rounds determines the verdict (ties default to NOGO).
 
 ## Prerequisites
 
@@ -75,34 +75,39 @@ uv run python -c "from config import settings; print('✓ Config loaded')"
 ### 5. Run the app
 
 ```bash
+# Judge mode
 streamlit run app.py
+
+# Debate mode
+streamlit run adversarial_debate/app_debate.py
 ```
 
-The app opens at [http://localhost:8501](http://localhost:8501).
+Both open at [http://localhost:8501](http://localhost:8501) (run one at a time).
 
 ## Usage
 
 1. Select **Risk Tolerance** in the sidebar — Balanced (Risk Neutral) or Conservative (Risk Averse)
-2. Enter a company name or description (e.g. `Anthropic`, `Harvey AI`, or `AI startup building medical imaging tools`)
-3. Click **Analyze**
-4. View the verdict and per-agent analysis
-5. Download the full report as Markdown
+2. *(Debate mode only)* Set **Max debate rounds** (1–5, default 3)
+3. Enter a company name or description (e.g. `Anthropic`, `Harvey AI`, or `AI startup building medical imaging tools`)
+4. Click **Analyze**
+5. View the verdict and per-agent analysis
+6. Download the full report as Markdown
 
 ## Cost estimates (per analysis)
 
 | API | Approx. cost | Notes |
 |-----|--------------|-------|
-| Anthropic Claude | $0.10 – $0.50 | 3–5 LLM calls per analysis |
+| Anthropic Claude | $0.10 – $0.50 | 3–5 LLM calls (Judge); up to 3×rounds more in Debate mode |
 | Tavily Search | $0.01 – $0.05 | ~10–15 searches, cached for reuse |
 | Crunchbase | optional | Not required for MVP |
 
-**Total (MVP)**: ~$0.15 – $0.60 per startup analysis
+**Total (MVP)**: ~$0.15 – $0.60 per analysis (Judge); higher in Debate mode depending on rounds
 
 ## Project structure
 
 ```
 investment-agent/
-├── app.py                     # Streamlit entry point
+├── app.py                     # Judge mode Streamlit entry point
 ├── config.py                  # Secrets loading and validation
 ├── models.py                  # AgentMessage, DebateResult dataclasses
 ├── agents/
@@ -110,18 +115,24 @@ investment-agent/
 │   ├── sentiment_agent.py     # Press, community, and momentum analysis via Tavily
 │   └── valuation_agent.py     # TAM, comparables, and return potential via Tavily
 ├── orchestrator/
-│   └── orchestrator.py        # Phase 1: 3 independent agents → Judge verdict; Phase 2 debate (future)
+│   └── orchestrator.py        # 3 independent agents → Judge verdict; eligibility check
 ├── tools/
 │   ├── anthropic.py           # Anthropic Claude client with retry
 │   └── tavily.py              # Tavily web search client with caching and retry
 ├── ui/
 │   ├── components.py          # Reusable Streamlit components
 │   └── styles.py              # Custom CSS
-└── tests/
-    ├── conftest.py
-    ├── agents/
-    ├── orchestrator/
-    └── tools/
+├── tests/
+│   ├── conftest.py
+│   ├── agents/
+│   ├── orchestrator/
+│   └── tools/
+└── adversarial_debate/        # Debate mode (self-contained module)
+    ├── app_debate.py          # Debate mode Streamlit entry point
+    ├── models.py              # DebatePosition, DebateRound dataclasses
+    ├── orchestrator.py        # Phase 1 → round-robin debate → consensus/majority vote
+    ├── agents/                # Debate-capable wrappers around base agents
+    └── tests/
 ```
 
 ## Development
@@ -141,6 +152,22 @@ ruff format .
 # Type check
 mypy .
 ```
+
+## Eligibility check
+
+Before running any agent analysis, the orchestrator runs a pre-screening check using a Tavily search (including Crunchbase) and an LLM judge. A company is blocked if any criterion scores above 80:
+
+| Criterion | Blocks if | Examples |
+|-----------|-----------|---------|
+| Publicly traded | `listed_confidence > 80` | C3.ai, Palantir, Salesforce |
+| Not AI-native | `not_ai_native_confidence > 80` | JPMorgan Chase, Walmart |
+| Series C or later | `late_stage_confidence > 80` | Replit, Databricks, Scale AI |
+
+**What counts as confirmed public listing:** active ticker symbol, current stock price, completed IPO.
+
+**What counts as confirmed late stage:** Crunchbase `last_funding_type` of Series C/D/E or later; confirmed round designation in news. "Venture - Series Unknown" is treated as inconclusive and passes through.
+
+**What does NOT trigger a block:** IPO speculation, funding round announcements, valuation estimates, or total funding amount alone.
 
 ## Troubleshooting
 

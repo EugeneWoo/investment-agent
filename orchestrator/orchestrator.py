@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 ELIGIBILITY_SYSTEM_PROMPT = """
 You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI startups and companies that have meaningfully integrated AI/LLMs into their products.
 
-You will be given a company name and web search results. Use the search results as ground truth.
+You will be given a company name and web search results (which may include Crunchbase data). Use the search results as ground truth.
 Score your confidence (0–100) on each criterion.
 
 IMPORTANT: If search results describe a completely different company (e.g., different industry, wrong names),
@@ -25,9 +25,11 @@ treat this as inconclusive information and score confidence LOW (<80) to allow t
 
 CRITERION 1 — PUBLIC LISTING (BLOCK if >80):
 We ONLY invest in private companies (Seed-to-Series B). Publicly traded companies should be BLOCKED.
-- Score listed_confidence HIGH (>80) ONLY if search results clearly show the company is publicly traded
-- Score listed_confidence LOW (0-20) if the company is private, pre-IPO, or venture-backed
-- Look for: ticker symbols, stock prices, "NYSE", "Nasdaq", "publicly traded", "IPO"
+- Score listed_confidence HIGH (>80) ONLY if search results CONFIRM the company is currently publicly traded
+- CONFIRMED evidence: active ticker symbol (e.g., $PLTR), current stock price, confirmed completed IPO
+- Score listed_confidence LOW (0-20) if the company is private, pre-IPO, venture-backed, or has raised funding rounds
+- Do NOT score high for: IPO speculation/rumours, comparisons to public companies, valuation estimates, or funding announcements
+- "Series A/B/C funding", "valued at $Xbn", "raised $X" = PRIVATE company signals → score LOW
 
 CRITERION 2 — AI-NATIVE (BLOCK if >80):
 We ONLY invest in AI-native companies. Non-AI companies should be BLOCKED.
@@ -44,9 +46,18 @@ DOES NOT QUALIFY:
 - Traditional cybersecurity, IoT, or infrastructure companies using AI as one feature
 - Energy, oil & gas, utilities, or other non-tech industries
 
+CRITERION 3 — FUNDING STAGE (BLOCK if >80):
+We ONLY invest in Seed-to-Series B companies. Series C and beyond should be BLOCKED.
+- Score late_stage_confidence HIGH (>80) ONLY if Crunchbase or other sources CONFIRM last funding round is Series C or later
+- CONFIRMED evidence: Crunchbase last_funding_type is "series_c", "series_d", "series_e", or later; or confirmed "Series C", "Series D" in news
+- Score late_stage_confidence LOW (0-20) if last funding is Seed, Series A, Series B, or unknown/venture
+- "Venture - Series Unknown" on Crunchbase = inconclusive → score LOW (<80), allow through
+- Do NOT block on total funding amount alone — only confirmed round designation matters
+
 Rules:
 - listed_confidence > 80: BLOCK (company is publicly traded, we only want private)
 - not_ai_native_confidence > 80: BLOCK (company is not AI-native)
+- late_stage_confidence > 80: BLOCK (company is Series C or later, outside our investment stage)
 - If search results are inconclusive or describe wrong company, score below 80 and allow through
 - The "reason" field must mention ONLY the criterion that caused the block
 
@@ -54,6 +65,7 @@ Respond with ONLY a valid JSON object — no markdown, no text outside the JSON:
 {
   "listed_confidence": <0-100>,
   "not_ai_native_confidence": <0-100>,
+  "late_stage_confidence": <0-100>,
   "eligible": <true|false>,
   "reason": "<one sentence citing only the blocking criterion if ineligible, empty string if eligible>"
 }
@@ -104,11 +116,11 @@ class Orchestrator:
         try:
             tavily = TavilyClient()
 
-            # Single comprehensive search for both listing and product information
-            # This ensures identical results for base and debate orchestrators
+            # Single comprehensive search — include Crunchbase to get authoritative funding stage data
             results = tavily.search(
-                f'"{company}" official website product what they do',
-                max_results=8,  # Get more results to ensure we find relevant info
+                f'"{company}" funding raised private company product AI',
+                max_results=8,
+                include_domains=["crunchbase.com"],
             )
 
             # Format all search results together
@@ -137,12 +149,14 @@ Web search results:
 
             listed_conf = int(data.get("listed_confidence", 0))
             not_ai_conf = int(data.get("not_ai_native_confidence", 0))
+            late_stage_conf = int(data.get("late_stage_confidence", 0))
             logger.info(
                 f"Eligibility check for '{company}': "
-                f"listed_confidence={listed_conf}, not_ai_native_confidence={not_ai_conf}"
+                f"listed_confidence={listed_conf}, not_ai_native_confidence={not_ai_conf}, "
+                f"late_stage_confidence={late_stage_conf}"
             )
 
-            if listed_conf > 80 or not_ai_conf > 80:
+            if listed_conf > 80 or not_ai_conf > 80 or late_stage_conf > 80:
                 reason = data.get("reason", "Company does not meet eligibility criteria.")
                 return False, reason
             return True, ""

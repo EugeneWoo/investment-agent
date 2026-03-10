@@ -34,6 +34,34 @@ The adversarial behavior comes from the **system prompt framing**: each agent is
 
 ---
 
+## Agentic Tool-Use Findings (from `agentic-test/test_agentic.py`)
+
+We ran a side-by-side latency comparison of single-shot vs agentic tool-use on "Perplexity AI":
+
+| Metric | Single-shot (current) | Agentic (tool-use) |
+|---|---|---|
+| Latency | ~20–24s | ~32s |
+| Anthropic API calls | 1 | 2 |
+| Tavily searches | 3 (hardcoded, parallel) | 5 (Claude-chosen, parallel) |
+| Founder score | 94 | 94 |
+| Market gap score | 88 | 82 |
+| Bandwagon risk | 72 | 71 |
+| Δ latency | — | +8s (+34%) |
+
+**Key lessons:**
+
+1. **One extra Anthropic call = ~8s overhead.** The agentic loop costs one additional round-trip (decide queries → receive results → produce JSON). Scores are nearly identical; the benefit is Claude choosing its own queries rather than Python hardcoding them.
+
+2. **Batch all tool calls in round 1.** When not prompted to batch, Claude made 3 sequential rounds (4→3→2 searches), doubling latency to +21s. With an explicit batching instruction it collapsed to 2 Anthropic calls. The system prompt must say: *emit ALL web_search calls in a single turn*.
+
+3. **JSON preamble bug.** In the agentic final turn, Claude prefixed its JSON with natural language ("Now I have comprehensive data..."). Fix: extract JSON by finding the outermost `{...}` rather than parsing the raw string from position 0. Already solved in `extract_json()` in the test file.
+
+4. **Implication for debate agents.** Each `debate_turn()` call is already one Anthropic call with no tool use — this is the right design for debate rounds. Tool-use during debate would add 8s+ per agent per round, which compounds badly (3 agents × 3 rounds = 9 extra calls). Keep `debate_turn()` as single-shot LLM calls reading pre-fetched Phase 1 data.
+
+5. **Where agentic tool-use belongs.** Phase 1 research (the `run()` methods) is the right place to adopt agentic tool-use if we want it — one extra call per agent, run in parallel, bounded latency impact. Phase 2 debate should stay single-shot per turn.
+
+---
+
 ## Implementation Plan
 
 ### Step 1 — `models.py`

@@ -63,13 +63,14 @@ class TavilyClient:
         reraise=True,
     )
     def _search_with_retry(
-        self, query: str, max_results: int
+        self, query: str, max_results: int, include_domains: list[str] | None = None
     ) -> list[TavilySearchResult]:
         """Execute Tavily search with retry logic.
 
         Args:
             query: Search query string.
             max_results: Maximum number of results to return.
+            include_domains: Optional list of domains to restrict results to.
 
         Returns:
             List of TavilySearchResult dictionaries.
@@ -78,13 +79,16 @@ class TavilyClient:
             BadRequestError: If API fails after retries.
             OSError: If network fails after retries.
         """
-        response = self._client.search(
-            query=query,
-            max_results=max_results,
-            search_depth="advanced",
-            include_answer=False,
-            include_raw_content=False,
-        )
+        kwargs: dict = {
+            "query": query,
+            "max_results": max_results,
+            "search_depth": "advanced",
+            "include_answer": False,
+            "include_raw_content": False,
+        }
+        if include_domains:
+            kwargs["include_domains"] = include_domains
+        response = self._client.search(**kwargs)
 
         results: list[TavilySearchResult] = []
         for item in response.get("results", []):
@@ -99,17 +103,23 @@ class TavilyClient:
 
         return results
 
-    def search(self, query: str, max_results: int = 10) -> list[TavilySearchResult]:
+    def search(
+        self,
+        query: str,
+        max_results: int = 10,
+        include_domains: list[str] | None = None,
+    ) -> list[TavilySearchResult]:
         """Search the web using Tavily API with caching.
 
         Args:
             query: Search query string.
             max_results: Maximum number of results to return (default: 10).
+            include_domains: Optional list of domains to prioritize in results.
 
         Returns:
             List of TavilySearchResult dictionaries. Returns empty list on API failure.
         """
-        cache_key = self._hash_query(query)
+        cache_key = self._hash_query(query + str(include_domains))
 
         # Check cache
         if cache_key in self._cache:
@@ -118,7 +128,7 @@ class TavilyClient:
 
         # Execute search with error handling
         try:
-            results = self._search_with_retry(query, max_results)
+            results = self._search_with_retry(query, max_results, include_domains)
             self._cache[cache_key] = results
             logger.info(
                 f"Tavily search successful: {len(results)} results for query: {query}"
