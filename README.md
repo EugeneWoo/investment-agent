@@ -1,12 +1,12 @@
-# Investment Agent
+# Investment Agents
 
-Multi-agent AI system for analyzing Seed-to-Series B AI startups. Two modes available:
+Multi-agent AI system for analyzing Seed-to-Series B AI startups. Both modes are available in a single unified app (`app.py`), selectable via a radio toggle at the top.
 
 ## How it works
 
-**Judge mode** (`app.py`): Three agents (Search, Sentiment, Valuation) each independently research the startup with no shared context. A fourth **Judge** LLM reads all three reports and issues the final GO / NOGO verdict.
+**LLM as CIO** (Judge mode): Three agents (Search, Sentiment, Valuation) each independently research the startup with no shared context. A fourth **Judge** LLM reads all three reports and issues the final GO / NOGO verdict.
 
-**Debate mode** (`adversarial_debate/app_debate.py`): Same three agents run Phase 1, then debate in round-robin (Search → Sentiment → Valuation, repeat) until all agree on GO or NOGO. If `max_rounds` is exceeded without consensus, majority vote across all rounds determines the verdict (ties default to NOGO).
+**Agentic Round-Robin Debate** (Debate mode): Same three agents run Phase 1, then debate in round-robin (Search → Sentiment → Valuation, repeat) until all agree on GO or NOGO. If `max_rounds` is exceeded without consensus, majority vote across all rounds determines the verdict (ties default to NOGO).
 
 ## Prerequisites
 
@@ -75,23 +75,24 @@ uv run python -c "from config import settings; print('✓ Config loaded')"
 ### 5. Run the app
 
 ```bash
-# Judge mode
+# Unified app (both modes)
 streamlit run app.py
 
-# Debate mode
+# Debate mode standalone (optional)
 streamlit run adversarial_debate/app_debate.py
 ```
 
-Both open at [http://localhost:8501](http://localhost:8501) (run one at a time).
+Opens at [http://localhost:8501](http://localhost:8501).
 
 ## Usage
 
-1. Select **Risk Tolerance** in the sidebar — Balanced (Risk Neutral) or Conservative (Risk Averse)
-2. *(Debate mode only)* Set **Max debate rounds** (1–5, default 3)
-3. Enter a company name or description (e.g. `Anthropic`, `Harvey AI`, or `AI startup building medical imaging tools`)
-4. Click **Analyze**
-5. View the verdict and per-agent analysis
-6. Download the full report as Markdown
+1. Select **LLM as CIO** or **Agentic Round-Robin Debate** at the top
+2. Select **Risk Tolerance** in the sidebar — Balanced (Risk Neutral) or Conservative (Risk Averse)
+3. *(Debate mode only)* Set **Max debate rounds** (1–5, default 3)
+4. Enter a company name or description (e.g. `Anthropic`, `Harvey AI`, or `AI startup building medical imaging tools`)
+5. Click **Analyze**
+6. View the verdict and per-agent analysis
+7. Download the full report as Markdown
 
 ## Cost estimates (per analysis)
 
@@ -107,7 +108,7 @@ Both open at [http://localhost:8501](http://localhost:8501) (run one at a time).
 
 ```
 investment-agent/
-├── app.py                     # Judge mode Streamlit entry point
+├── app.py                     # Unified Streamlit entry point (LLM as CIO + Agentic Round-Robin Debate)
 ├── config.py                  # Secrets loading and validation
 ├── models.py                  # AgentMessage, DebateResult dataclasses
 ├── agents/
@@ -128,7 +129,7 @@ investment-agent/
 │   ├── orchestrator/
 │   └── tools/
 └── adversarial_debate/        # Debate mode (self-contained module)
-    ├── app_debate.py          # Debate mode Streamlit entry point
+    ├── app_debate.py          # Debate mode standalone Streamlit entry point
     ├── models.py              # DebatePosition, DebateRound dataclasses
     ├── orchestrator.py        # Phase 1 → round-robin debate → consensus/majority vote
     ├── agents/                # Debate-capable wrappers around base agents
@@ -155,7 +156,9 @@ mypy .
 
 ## Eligibility check
 
-Before running any agent analysis, the orchestrator runs a pre-screening check using a Tavily search (including Crunchbase) and an LLM judge. A company is blocked if any criterion scores above 80:
+Before running any agent analysis, the orchestrator runs a pre-screening check using two Tavily searches and an LLM judge. A company is blocked if any criterion scores above 80:
+
+Two searches are used: (1) Crunchbase-domain search for authoritative funding/product data; (2) broad news search targeting Series C/D/E and IPO keywords — necessary because Crunchbase profile pages are paywalled and Tavily cannot scrape them directly.
 
 | Criterion | Blocks if | Examples |
 |-----------|-----------|---------|

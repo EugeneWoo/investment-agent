@@ -4,10 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Multi-agent investment analysis system for Seed-to-Series B AI startups. Two modes, both deployed as public Streamlit dashboards on Streamlit Community Cloud:
+Multi-agent investment analysis system for Seed-to-Series B AI startups. Both modes are unified in a single Streamlit dashboard (`app.py`) deployed on Streamlit Community Cloud:
 
-- **Judge mode** (`app.py`): Three agents (Search, Sentiment, Valuation) research independently, then a fourth **Judge** LLM synthesizes into a GO/NOGO verdict.
-- **Debate mode** (`adversarial_debate/app_debate.py`): Same three agents run Phase 1, then debate in round-robin until consensus or `max_rounds` is exceeded (majority vote fallback).
+- **LLM as CIO** (Judge mode): Three agents (Search, Sentiment, Valuation) research independently, then a fourth **Judge** LLM synthesizes into a GO/NOGO verdict.
+- **Agentic Round-Robin Debate** (Debate mode): Same three agents run Phase 1, then debate in round-robin until consensus or `max_rounds` is exceeded (majority vote fallback).
+
+`adversarial_debate/app_debate.py` remains as a standalone entry point for the debate mode only.
 
 ## Tech Stack
 
@@ -27,8 +29,8 @@ Multi-agent investment analysis system for Seed-to-Series B AI startups. Two mod
 uv sync                        # or: pip install -e ".[dev]"
 
 # Run the apps locally
-streamlit run app.py                              # Judge mode
-streamlit run adversarial_debate/app_debate.py   # Debate mode
+streamlit run app.py                              # Unified app (both modes)
+streamlit run adversarial_debate/app_debate.py   # Debate mode standalone
 
 # Run tests
 pytest                              # all tests
@@ -46,7 +48,7 @@ mypy .
 
 ```
 investment-agent/
-├── app.py                     # Judge mode Streamlit entry point
+├── app.py                     # Unified Streamlit entry point (LLM as CIO + Agentic Round-Robin Debate)
 ├── agents/
 │   ├── search_agent.py        # Discovers Seed-to-Series B AI startups via Tavily + Crunchbase
 │   ├── sentiment_agent.py     # Reflection-enhanced LLM summarization over Reddit/Twitter/news
@@ -68,7 +70,7 @@ investment-agent/
 │   ├── orchestrator/
 │   └── tools/
 └── adversarial_debate/        # Debate mode (self-contained module)
-    ├── app_debate.py          # Debate mode Streamlit entry point
+    ├── app_debate.py          # Debate mode standalone Streamlit entry point
     ├── models.py              # DebatePosition, DebateRound dataclasses
     ├── orchestrator.py        # DebateOrchestrator: Phase 1 → round-robin debate → consensus/majority vote
     ├── agents/
@@ -85,5 +87,6 @@ investment-agent/
 - **Orchestrator pipeline:** `Orchestrator.run()` runs each agent independently (no shared context), then a Judge LLM reads all three reports and issues GO/NOGO. `DebateOrchestrator.run()` runs the same Phase 1, then adds a round-robin debate loop.
 - **Structured output:** All inter-agent data uses `AgentMessage` and `DebateResult` dataclasses — no bare dicts
 - **Debate consensus:** All agents must agree on GO/NOGO. Exceeding `max_rounds` triggers majority vote across all rounds; ties default to NOGO.
-- **Eligibility check:** Runs before any agent analysis. Single Tavily search (`"{company}" funding raised private company product AI`, `include_domains=["crunchbase.com"]`) + LLM scoring on three criteria: `listed_confidence` (BLOCK if >80 — publicly traded), `not_ai_native_confidence` (BLOCK if >80 — not AI-native), `late_stage_confidence` (BLOCK if >80 — Series C or later). "Venture - Series Unknown" on Crunchbase is treated as inconclusive and passes through. Both orchestrators share the same eligibility logic for A/B test consistency.
-- **Session state keys:** `st.session_state["debate_result"]`, `["agent_messages"]`, `["run_config"]`
+- **Eligibility check:** Runs before any agent analysis. Two Tavily searches: (1) Crunchbase-domain search for authoritative funding/product data; (2) broad news search targeting Series C/D/E and IPO keywords (Crunchbase profile pages are paywalled, so news catches late-stage rounds the profile page cannot). LLM scores three criteria: `listed_confidence` (BLOCK if >80 — publicly traded), `not_ai_native_confidence` (BLOCK if >80 — not AI-native), `late_stage_confidence` (BLOCK if >80 — Series C or later). "Venture - Series Unknown" is inconclusive and passes through. Both orchestrators share the same eligibility logic for A/B test consistency.
+- **Session state keys:** Judge mode: `st.session_state["judge_result"]`, `["judge_config"]`. Debate mode: `["debate_result"]`, `["debate_config"]`.
+- **Unified app:** `app.py` hosts both modes via a top-level radio selector (`"LLM as CIO"` | `"Agentic Round-Robin Debate"`). Each mode renders its own sidebar config, input, run logic, and results section.
