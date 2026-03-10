@@ -192,9 +192,17 @@ class SentimentDebateAgent:
         system_prompt = self._debate_system_prompt(risk_tolerance)
         history_text = self._format_debate_history(debate_history)
 
+        prior_entries = [e for e in debate_history if e.get("agent_name") == self.agent_name]
+        prior_confidence_line = (
+            f"Your previous confidence: {prior_entries[-1]['confidence']:.2f}"
+            if prior_entries
+            else "Your previous confidence: N/A (this is your first round)"
+        )
+
         user_message = f"""Company: {company}
 Risk tolerance: {risk_tolerance}
 Round: {round_number}
+{prior_confidence_line}
 
 ## Your Phase 1 Analysis (sentiment, press, community):
 {phase1_analysis[:2000]}
@@ -205,6 +213,8 @@ Round: {round_number}
 ## Your Turn:
 Review the prior positions. Identify the weakest opposing argument and challenge it.
 Update your position (GO/NOGO), confidence, rationale, and challenges.
+
+CONFIDENCE RULE: Your confidence score MUST change from your previous value unless you can state a specific, compelling reason in your rationale for why the debate has added nothing new. Adjust up if arguments strengthen your case; adjust down if opposing arguments raised valid concerns. Do not anchor to your prior score.
 
 Return JSON in the specified format."""
 

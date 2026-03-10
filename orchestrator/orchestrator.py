@@ -49,11 +49,12 @@ DOES NOT QUALIFY:
 CRITERION 3 — FUNDING STAGE (BLOCK if >80):
 We ONLY invest in Seed-to-Series B companies. Series C and beyond should be BLOCKED.
 Crunchbase is the authoritative source for funding stage. If Crunchbase data is absent or inconclusive, default to score 0 — do NOT infer stage from funding amount, valuation, or company size.
-- Score late_stage_confidence 90-100 ONLY if Crunchbase explicitly states last_funding_type is "series_c", "series_d", "series_e", or later
+- Score late_stage_confidence 90-100 if Crunchbase explicitly states last_funding_type is "series_c", "series_d", "series_e", or later
+- Score late_stage_confidence 90-100 if at least one credible source (news outlet, press release, or Crunchbase) reports a confirmed closed Series C, D, or E round with a specific dollar amount and round label (e.g. "Company X closes $Xm Series C") — Crunchbase profile pages are paywalled, so news is a valid fallback
 - Score late_stage_confidence 0-20 if last funding is Seed, Series A, or Series B
-- Score late_stage_confidence 0 if Crunchbase data is missing, ambiguous, or says "Venture - Series Unknown"
+- Score late_stage_confidence 0 if Crunchbase data is missing or ambiguous AND news only speculates without a confirmed close
+- Score late_stage_confidence 0 if Crunchbase says "Venture - Series Unknown" and news provides no confirmed round label
 - Do NOT score above 0 based on funding amount, valuation, or company size alone — only the confirmed round label matters
-- Do NOT score above 0 if news articles mention Series C without a corresponding Crunchbase entry
 
 Rules:
 - listed_confidence > 80: BLOCK (company is publicly traded, we only want private)
