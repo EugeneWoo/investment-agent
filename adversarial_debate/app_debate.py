@@ -370,14 +370,15 @@ if "debate_result" in st.session_state:
     else:
         st.caption(f"⚠ No consensus after {result.rounds} round(s) — majority vote")
 
-        debate_msgs = [m for m in result.messages if m.role == "debate"]
-        last_positions: dict[str, dict] = {}
-        for m in debate_msgs:
-            try:
-                last_positions[m.agent_name] = json.loads(m.content)
-            except (json.JSONDecodeError, KeyError):
-                pass
+    debate_msgs = [m for m in result.messages if m.role == "debate"]
+    last_positions: dict[str, dict] = {}
+    for m in debate_msgs:
+        try:
+            last_positions[m.agent_name] = json.loads(m.content)
+        except (json.JSONDecodeError, KeyError):
+            pass
 
+    if last_positions:
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {
                 name: executor.submit(
@@ -388,12 +389,12 @@ if "debate_result" in st.session_state:
                 )
                 for name, d in last_positions.items()
             }
-            for name, d in last_positions.items():
-                pos = d.get("position", "?")
-                conf = d.get("confidence", 0)
-                icon = "🟢" if pos == "GO" else "🔴"
-                short = futures[name].result()
-                st.markdown(f"{icon} **{name}**: {pos} ({conf:.0%}) — {short}")
+        for name, d in last_positions.items():
+            pos = d.get("position", "?")
+            conf = d.get("confidence", 0)
+            icon = "🟢" if pos == "GO" else "🔴"
+            short = futures[name].result()
+            st.markdown(f"{icon} **{name}**: {pos} ({conf:.0%}) — {short}")
 
     if verdict == "GO" and result.recommendations:
         st.divider()
