@@ -37,11 +37,18 @@ def _escape_dollars(text: str) -> str:
     return text.replace("$", r"\$")
 
 
+def _safe_text(text: str) -> str:
+    """Escape $ and strip backticks so text renders as plain prose in st.markdown."""
+    if not text:
+        return text
+    return _escape_dollars(text).replace("`", "'")
+
+
 def _render_agent_output(agent_name: str, data: dict) -> None:  # type: ignore[type-arg]
     """Render structured agent JSON output in a readable format."""
     if agent_name == "Search Agent":
         company = data.get("company", {})
-        st.markdown(f"**{company.get('name', 'Unknown')}** — {_escape_dollars(company.get('description', ''))}")
+        st.markdown(f"**{company.get('name', 'Unknown')}** — {_safe_text(company.get('description', ''))}")
         st.caption(f"Funding stage: {company.get('funding_stage', 'unknown')}")
 
         fa = data.get("founder_analysis", {})
@@ -53,11 +60,11 @@ def _render_agent_output(agent_name: str, data: dict) -> None:  # type: ignore[t
         c4.metric("Defensibility", ma.get("defensibility_score", "N/A"))
 
         if fa.get("narrative"):
-            st.markdown(f"**Founders**: {_escape_dollars(fa['narrative'])}")
+            st.markdown(f"**Founders**: {_safe_text(fa['narrative'])}")
         if ma.get("differentiation"):
-            st.markdown(f"**Differentiation**: {_escape_dollars(ma['differentiation'])}")
+            st.markdown(f"**Differentiation**: {_safe_text(ma['differentiation'])}")
         if ma.get("bandwagon_evidence"):
-            st.markdown("**Bandwagon signals**: " + " · ".join(_escape_dollars(s) for s in ma["bandwagon_evidence"]))
+            st.markdown("**Bandwagon signals**: " + " · ".join(_safe_text(s) for s in ma["bandwagon_evidence"]))
 
         founders = data.get("founders", [])
         if founders:
@@ -87,9 +94,9 @@ def _render_agent_output(agent_name: str, data: dict) -> None:  # type: ignore[t
         )
         st.markdown(f"**Verdict**: {verdict_icon} {s.get('verdict', 'unknown').title()}")
         if s.get("narrative"):
-            st.markdown(_escape_dollars(s["narrative"]))
+            st.markdown(_safe_text(s["narrative"]))
         if s.get("red_flags"):
-            st.markdown("**Red flags**: " + " · ".join(_escape_dollars(f) for f in s["red_flags"]))
+            st.markdown("**Red flags**: " + " · ".join(_safe_text(f) for f in s["red_flags"]))
 
     elif agent_name == "Valuation Agent":
         v = data.get("valuation", {})
@@ -100,19 +107,19 @@ def _render_agent_output(agent_name: str, data: dict) -> None:  # type: ignore[t
         c4.metric("Stage Fit", v.get("stage_fit_score", "N/A"))
 
         if v.get("tam_estimate"):
-            st.markdown(f"**TAM**: {_escape_dollars(v['tam_estimate'])}")
+            st.markdown(f"**TAM**: {_safe_text(v['tam_estimate'])}")
         if v.get("return_potential"):
-            st.markdown(f"**Upside**: {_escape_dollars(v['return_potential'])}")
+            st.markdown(f"**Upside**: {_safe_text(v['return_potential'])}")
         if v.get("key_risks"):
-            st.markdown("**Key risks**: " + " · ".join(_escape_dollars(r) for r in v["key_risks"][:3]))
+            st.markdown("**Key risks**: " + " · ".join(_safe_text(r) for r in v["key_risks"][:3]))
         if v.get("comparables"):
             st.markdown("**Comparables**: " + ", ".join(
-                _escape_dollars(f"{c['name']} ({c.get('outcome', '?')})") for c in v["comparables"][:3]
+                _safe_text(f"{c['name']} ({c.get('outcome', '?')})") for c in v["comparables"][:3]
             ))
 
     summary_key = next((k for k in data if k.endswith("_summary")), None)
     if summary_key:
-        st.info(_escape_dollars(data[summary_key]))
+        st.info(_safe_text(data[summary_key]))
 
 
 def _render_debate_rounds(result: DebateResult) -> None:
@@ -140,8 +147,9 @@ def _render_debate_rounds(result: DebateResult) -> None:
     for round_num in range(1, max_round + 1):
         with st.expander(f"**Round {round_num}**", expanded=(round_num == 1)):
             if round_num in positions_by_round and positions_by_round[round_num]:
-                for pos in positions_by_round[round_num]:
-                    st.markdown(f"##### {pos['agent_name']}")
+                entries = positions_by_round[round_num]
+                for i, pos in enumerate(entries):
+                    st.markdown(f"**{pos['agent_name']}**")
                     data = pos["data"]
                     position = data.get("position", "NOGO")
                     confidence = data.get("confidence", 0.0)
@@ -149,14 +157,15 @@ def _render_debate_rounds(result: DebateResult) -> None:
                     challenges = data.get("challenges", [])
 
                     position_color = "🟢" if position == "GO" else "🔴"
-                    st.markdown(f"**Debate stance**: {position_color} {position} (confidence: {confidence:.1%})")
+                    st.markdown(f"{position_color} **{position}** — confidence: {confidence:.1%}")
                     if rationale:
-                        st.markdown(f"**Rationale**: {_escape_dollars(rationale)}")
+                        st.markdown(_safe_text(rationale))
                     if challenges:
-                        st.markdown("**Challenges to other agents**:")
+                        st.markdown("**Challenges:**")
                         for c in challenges:
-                            st.markdown(f"- {_escape_dollars(c)}")
-                    st.markdown("---")
+                            st.markdown(f"- {_safe_text(c)}")
+                    if i < len(entries) - 1:
+                        st.divider()
             else:
                 st.info("This round was not required — consensus reached earlier.")
 
@@ -338,7 +347,7 @@ def _run_judge_mode() -> None:
                 eligible, ineligible_reason = orchestrator.eligibility_check(company)
                 if not eligible:
                     status.update(label="Company not eligible", state="error")
-                    st.error(f"**Not eligible for analysis:** {ineligible_reason}")
+                    st.error(f"Not eligible for analysis: {_safe_text(ineligible_reason)}")
                     st.stop()
 
                 search_agent = SearchAgent(risk_tolerance)
@@ -393,15 +402,15 @@ def _run_judge_mode() -> None:
 
         verdict = result.verdict
         if verdict == "GO":
-            st.success("## GO — Recommend Investing")
+            st.success("GO — Recommend Investing")
         else:
-            st.error("## NO-GO — Pass on this investment")
+            st.error("NO-GO — Pass on this investment")
 
         judge_msgs = [m for m in result.messages if m.role == "judge"]
         if judge_msgs:
             lines = judge_msgs[0].content.strip().split("\n", 1)
             if len(lines) > 1:
-                st.markdown(_escape_dollars(lines[1].strip()))
+                st.markdown(_safe_text(lines[1].strip()))
 
         if verdict == "GO" and result.recommendations:
             st.divider()
@@ -492,7 +501,7 @@ def _run_debate_mode() -> None:
                 eligible, ineligible_reason = orchestrator.eligibility_check(company)
                 if not eligible:
                     status.update(label="Company not eligible", state="error")
-                    st.error(f"**Not eligible for analysis:** {ineligible_reason}")
+                    st.error(f"Not eligible for analysis: {_safe_text(ineligible_reason)}")
                     st.stop()
 
                 st.write("🔍 📰 📊 Running all 3 agents in parallel...")
@@ -532,9 +541,9 @@ def _run_debate_mode() -> None:
 
         verdict = result.verdict
         if verdict == "GO":
-            st.success("## GO — Recommend Investing")
+            st.success("GO — Recommend Investing")
         else:
-            st.error("## NO-GO — Pass on this investment")
+            st.error("NO-GO — Pass on this investment")
 
         if result.consensus_reached:
             st.caption(f"✓ Consensus reached in {result.rounds} round(s)")
