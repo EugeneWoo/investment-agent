@@ -44,6 +44,22 @@ def _safe_text(text: str) -> str:
     return _escape_dollars(text).replace("`", "'")
 
 
+def _summarise_position(agent_name: str, position: str, rationale: str) -> str:
+    """Return a single plain sentence summarising the agent's final stance."""
+    from tools.anthropic import AnthropicClient
+    llm = AnthropicClient()
+    return llm.messages_create(
+        system_prompt=(
+            "You summarise an investment analyst's position in one short, plain sentence. "
+            "Do not mention other agents, round numbers, or debate mechanics. "
+            "Focus only on the key investment reason behind the stance. "
+            "Return only the sentence, no preamble."
+        ),
+        user_message=f"Agent: {agent_name}\nPosition: {position}\nRationale: {rationale}",
+        max_tokens=80,
+    ).strip()
+
+
 def _render_agent_output(agent_name: str, data: dict) -> None:  # type: ignore[type-arg]
     """Render structured agent JSON output in a readable format."""
     if agent_name == "Search Agent":
@@ -559,14 +575,22 @@ def _run_debate_mode() -> None:
                 except (json.JSONDecodeError, KeyError):
                     pass
 
-            for name, d in last_positions.items():
-                pos = d.get("position", "?")
-                conf = d.get("confidence", 0)
-                # Use only the first sentence of the rationale
-                rationale = d.get("rationale", "").strip()
-                short = rationale.split(".")[0].strip() + "." if rationale else ""
-                icon = "🟢" if pos == "GO" else "🔴"
-                st.markdown(f"{icon} **{name}**: {pos} ({conf:.0%}) — {short}")
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                futures = {
+                    name: executor.submit(
+                        _summarise_position,
+                        name,
+                        d.get("position", "?"),
+                        d.get("rationale", ""),
+                    )
+                    for name, d in last_positions.items()
+                }
+                for name, d in last_positions.items():
+                    pos = d.get("position", "?")
+                    conf = d.get("confidence", 0)
+                    icon = "🟢" if pos == "GO" else "🔴"
+                    short = futures[name].result()
+                    st.markdown(f"{icon} **{name}**: {pos} ({conf:.0%}) — {short}")
 
         if verdict == "GO" and result.recommendations:
             st.divider()
