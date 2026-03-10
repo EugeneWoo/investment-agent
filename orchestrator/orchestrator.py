@@ -48,17 +48,18 @@ DOES NOT QUALIFY:
 
 CRITERION 3 — FUNDING STAGE (BLOCK if >80):
 We ONLY invest in Seed-to-Series B companies. Series C and beyond should be BLOCKED.
-- Score late_stage_confidence HIGH (>80) ONLY if Crunchbase or other sources CONFIRM last funding round is Series C or later
-- CONFIRMED evidence: Crunchbase last_funding_type is "series_c", "series_d", "series_e", or later; or confirmed "Series C", "Series D" in news
-- Score late_stage_confidence LOW (0-20) if last funding is Seed, Series A, Series B, or unknown/venture
-- "Venture - Series Unknown" on Crunchbase = inconclusive → score LOW (<80), allow through
-- Do NOT block on total funding amount alone — only confirmed round designation matters
+Crunchbase is the authoritative source for funding stage. If Crunchbase data is absent or inconclusive, default to score 0 — do NOT infer stage from funding amount, valuation, or company size.
+- Score late_stage_confidence 90-100 ONLY if Crunchbase explicitly states last_funding_type is "series_c", "series_d", "series_e", or later
+- Score late_stage_confidence 0-20 if last funding is Seed, Series A, or Series B
+- Score late_stage_confidence 0 if Crunchbase data is missing, ambiguous, or says "Venture - Series Unknown"
+- Do NOT score above 0 based on funding amount, valuation, or company size alone — only the confirmed round label matters
+- Do NOT score above 0 if news articles mention Series C without a corresponding Crunchbase entry
 
 Rules:
 - listed_confidence > 80: BLOCK (company is publicly traded, we only want private)
 - not_ai_native_confidence > 80: BLOCK (company is not AI-native)
 - late_stage_confidence > 80: BLOCK (company is Series C or later, outside our investment stage)
-- If search results are inconclusive or describe wrong company, score below 80 and allow through
+- When in doubt on any criterion, score LOW and allow through for manual review
 - The "reason" field must mention ONLY the criterion that caused the block
 
 Respond with ONLY a valid JSON object — no markdown, no text outside the JSON:
@@ -140,6 +141,7 @@ Web search results:
                 system_prompt=ELIGIBILITY_SYSTEM_PROMPT,
                 user_message=user_message,
                 max_tokens=256,
+                temperature=0,
             )
             logger.info(f"Eligibility LLM response for '{company}': {response}")
             raw = response.strip()

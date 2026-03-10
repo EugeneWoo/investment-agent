@@ -49,6 +49,7 @@ class AnthropicClient:
         system_prompt: str,
         user_message: str,
         max_tokens: int,
+        temperature: float | None = None,
     ) -> Message:
         """Execute Anthropic API call with retry logic.
 
@@ -56,6 +57,7 @@ class AnthropicClient:
             system_prompt: System prompt for the LLM.
             user_message: User message content.
             max_tokens: Maximum tokens in response.
+            temperature: Sampling temperature. None uses the API default.
 
         Returns:
             Anthropic Message object.
@@ -63,20 +65,22 @@ class AnthropicClient:
         Raises:
             Exception: If API fails after retries (various Anthropic exceptions).
         """
-        return self._client.messages.create(
+        kwargs: dict = dict(
             model=self._model,
             max_tokens=max_tokens,
             system=system_prompt,
-            messages=[
-                {"role": "user", "content": user_message},
-            ],
+            messages=[{"role": "user", "content": user_message}],
         )
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        return self._client.messages.create(**kwargs)
 
     def messages_create(
         self,
         system_prompt: str,
         user_message: str,
         max_tokens: int = 4096,
+        temperature: float | None = None,
     ) -> str:
         """Generate a response from Claude using the Anthropic API.
 
@@ -84,6 +88,7 @@ class AnthropicClient:
             system_prompt: System prompt for the LLM.
             user_message: User message content.
             max_tokens: Maximum tokens in response (default: 4096).
+            temperature: Sampling temperature. None uses the API default.
 
         Returns:
             Response text content from Claude.
@@ -92,7 +97,7 @@ class AnthropicClient:
             Exception: If API fails after retries, with additional context logged.
         """
         try:
-            response = self._create_with_retry(system_prompt, user_message, max_tokens)
+            response = self._create_with_retry(system_prompt, user_message, max_tokens, temperature)
 
             # Extract first text block from response
             text_blocks = [b for b in response.content if hasattr(b, "text")]
