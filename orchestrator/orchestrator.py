@@ -17,14 +17,17 @@ logger = logging.getLogger(__name__)
 ELIGIBILITY_SYSTEM_PROMPT = """
 You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI startups and companies that have meaningfully integrated AI/LLMs into their products.
 
-You will be given a company name and web search results covering both listing status and product information.
-Use the search results as ground truth. Score your confidence (0–100) on each criterion.
+You will be given a company name and web search results. Use the search results as ground truth.
+Score your confidence (0–100) on each criterion.
+
+IMPORTANT: If search results describe a completely different company (e.g., different industry, wrong names),
+treat this as inconclusive information and score confidence LOW (<80) to allow through for manual review.
 
 CRITERION 1 — PUBLIC LISTING (BLOCK if >80):
 We ONLY invest in private companies (Seed-to-Series B). Publicly traded companies should be BLOCKED.
-- Score listed_confidence HIGH (>80) ONLY if the company is publicly traded (has ticker symbol, stock price, exchange listing)
+- Score listed_confidence HIGH (>80) ONLY if search results clearly show the company is publicly traded
 - Score listed_confidence LOW (0-20) if the company is private, pre-IPO, or venture-backed
-- Search for "stock", "IPO", "publicly traded", "ticker", "NYSE", "Nasdaq"
+- Look for: ticker symbols, stock prices, "NYSE", "Nasdaq", "publicly traded", "IPO"
 
 CRITERION 2 — AI-NATIVE (BLOCK if >80):
 We ONLY invest in AI-native companies. Non-AI companies should be BLOCKED.
@@ -39,11 +42,12 @@ AI-NATIVE DEFINITIONS (company qualifies if ANY apply):
 DOES NOT QUALIFY:
 - Bank, marketplace, payments, pharma, retailer, manufacturer using AI peripherally
 - Traditional cybersecurity, IoT, or infrastructure companies using AI as one feature
+- Energy, oil & gas, utilities, or other non-tech industries
 
 Rules:
 - listed_confidence > 80: BLOCK (company is publicly traded, we only want private)
 - not_ai_native_confidence > 80: BLOCK (company is not AI-native)
-- If search results are inconclusive, score below 80 and allow through
+- If search results are inconclusive or describe wrong company, score below 80 and allow through
 - The "reason" field must mention ONLY the criterion that caused the block
 
 Respond with ONLY a valid JSON object — no markdown, no text outside the JSON:
@@ -103,8 +107,8 @@ class Orchestrator:
             # Single comprehensive search for both listing and product information
             # This ensures identical results for base and debate orchestrators
             results = tavily.search(
-                f'"{company}" stock ticker public listing product description',
-                max_results=6,  # Get more results to cover both criteria
+                f'"{company}" official website product what they do',
+                max_results=8,  # Get more results to ensure we find relevant info
             )
 
             # Format all search results together
@@ -118,11 +122,14 @@ class Orchestrator:
 Web search results:
 {snippets}"""
 
+            logger.info(f"Eligibility search results for '{company}': {snippets[:500]}...")
+
             response = self._llm.messages_create(
                 system_prompt=ELIGIBILITY_SYSTEM_PROMPT,
                 user_message=user_message,
                 max_tokens=256,
             )
+            logger.info(f"Eligibility LLM response for '{company}': {response}")
             raw = response.strip()
             json_start = raw.rfind("{")
             json_end = raw.rfind("}") + 1
