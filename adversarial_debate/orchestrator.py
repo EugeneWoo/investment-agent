@@ -276,6 +276,7 @@ class DebateOrchestrator:
                 # Create a readable message for the UI
                 content = json.dumps(
                     {
+                        "round_number": pos.round_number,
                         "position": pos.position,
                         "confidence": pos.confidence,
                         "rationale": pos.rationale,
