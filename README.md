@@ -8,6 +8,23 @@ Multi-agent AI system for analyzing Seed-to-Series B AI startups. Both modes are
 
 **Agentic Round-Robin Debate** (Debate mode): Same three agents run Phase 1, then debate in round-robin (Search → Sentiment → Valuation, repeat) until all agree on GO or NOGO. If `max_rounds` is exceeded without consensus, majority vote across all rounds determines the verdict (ties default to NOGO).
 
+## Quick start
+
+**Live app:** [https://investment-agents.streamlit.app/](https://investment-agents.streamlit.app/)
+
+**Run locally:**
+
+```bash
+git clone https://github.com/EugeneWoo/investment-agent.git
+cd investment-agent
+uv sync
+# Add API keys to .streamlit/secrets.toml (see Setup below)
+streamlit run app.py
+# Opens at http://localhost:8501
+```
+
+---
+
 ## Prerequisites
 
 - Python 3.11+
