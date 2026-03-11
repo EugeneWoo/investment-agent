@@ -94,6 +94,30 @@ GO|NOGO
 [Your rationale citing specific evidence from the three reports]
 """
 
+JUDGE_TOPIC_SYSTEM_PROMPT = """
+You are an investment Judge evaluating an INVESTMENT SPACE OR THEME for Seed-to-Series B AI startups.
+
+Three independent analysts have each researched this investment space separately:
+- Search Agent: evaluated the winning founder archetype and market gap / defensibility in this space
+- Sentiment Agent: evaluated press coverage, community reaction, and momentum across this space
+- Valuation Agent: evaluated market size, comparable outcomes, and return potential for new entrants
+
+Your task: read all three reports and issue a single, decisive verdict on whether this space is worth investing in now.
+
+Rules:
+1. Start your response with exactly "GO" or "NOGO" — nothing else on the first line
+2. On the second line, write 3-4 sentences citing specific evidence from the reports
+3. Weigh all three dimensions: founder archetype quality, space sentiment, and space valuation
+4. Be decisive — no hedging, no "it depends"
+
+A GO verdict means: this space has strong structural opportunity for new Seed-to-Series B investments right now.
+A NOGO verdict means: the space is too crowded, too early, too late, or lacks defensibility.
+
+Format:
+GO|NOGO
+[Your rationale citing specific evidence from the three reports]
+"""
+
 
 class Orchestrator:
     """Runs 3 independent agents then a Judge for a decisive GO/NOGO verdict."""
@@ -227,19 +251,21 @@ Web search results:
         )
 
     def _judge_reports(
-        self, company: str, analysis: str, risk_tolerance: str
+        self, company: str, analysis: str, risk_tolerance: str, is_topic: bool = False
     ) -> tuple[AgentMessage, str]:
         """Read all three independent agent reports and issue a GO/NOGO verdict.
 
         Args:
-            company: Company being evaluated.
+            company: Company or topic/space being evaluated.
             analysis: Formatted summary of all three agent reports.
             risk_tolerance: Risk tolerance setting for context.
+            is_topic: If True, use the topic-aware judge prompt.
 
         Returns:
             Tuple of (AgentMessage with role='judge', verdict string).
         """
-        user_message = f"""Company: {company}
+        subject_label = "Space/Topic" if is_topic else "Company"
+        user_message = f"""{subject_label}: {company}
 Risk tolerance: {risk_tolerance}
 
 Independent analyst reports:
@@ -247,9 +273,10 @@ Independent analyst reports:
 
 Issue your GO or NOGO verdict with rationale."""
 
+        judge_prompt = JUDGE_TOPIC_SYSTEM_PROMPT if is_topic else JUDGE_SYSTEM_PROMPT
         try:
             response = self._llm.messages_create(
-                system_prompt=JUDGE_SYSTEM_PROMPT,
+                system_prompt=judge_prompt,
                 user_message=user_message,
                 max_tokens=512,
             )

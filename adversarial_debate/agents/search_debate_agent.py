@@ -176,15 +176,17 @@ class SearchDebateAgent:
         debate_history: list[dict],
         round_number: int,
         risk_tolerance: str,
+        is_topic: bool = False,
     ) -> DebatePosition:
         """Take a debate turn after reviewing prior positions.
 
         Args:
-            company: Company being analyzed.
+            company: Company or topic/space being analyzed.
             phase1_analysis: The agent's Phase 1 analysis (truncated to ~2000 chars).
             debate_history: Accumulated positions from all prior rounds.
             round_number: Current debate round number (1-indexed).
             risk_tolerance: Risk tolerance setting for prompt selection.
+            is_topic: If True, frame the debate around the space rather than a single company.
 
         Returns:
             DebatePosition with the agent's updated stance.
@@ -200,12 +202,13 @@ class SearchDebateAgent:
             else "Your previous confidence: N/A (this is your first round)"
         )
 
-        user_message = f"""Company: {company}
+        subject_label = "Space/Topic" if is_topic else "Company"
+        user_message = f"""{subject_label}: {company}
 Risk tolerance: {risk_tolerance}
 Round: {round_number}
 {prior_confidence_line}
 
-## Your Phase 1 Analysis (founder quality + market gap):
+## Your Phase 1 Analysis (founder archetype + market gap in this space):
 {phase1_analysis[:2000]}
 
 ## Prior Debate Positions:

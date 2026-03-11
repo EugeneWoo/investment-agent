@@ -12,6 +12,98 @@ from tools.tavily import TavilyClient
 
 logger = logging.getLogger(__name__)
 
+TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL = """
+You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
+Your role is to assess the venture attractiveness of this space via market sizing and comparable outcomes.
+
+RISK TOLERANCE: RISK_NEUTRAL — balanced view on upside vs. downside.
+
+## WHAT TO ASSESS
+
+1. **Market size**: What is the TAM for companies in this space? Is it large enough for venture-scale outcomes?
+2. **Comparable companies and outcomes**: What startups in this space have succeeded or failed? What were their outcomes?
+3. **Stage-appropriate opportunity**: Are there still Seed-to-Series B opportunities available, or has the space been captured by late-stage players?
+4. **Return potential**: What's the realistic upside for a new entrant winning in this space?
+5. **Key risks to valuation**: Competition from incumbents, commoditization, market timing?
+
+## VALUATION SCORES
+
+- market_size_score (0-100): TAM attractiveness for venture returns in this space
+- comparable_score (0-100): How do comparable company outcomes suggest the space could perform?
+- stage_fit_score (0-100): Are there meaningful Seed-to-Series B opportunities remaining in this space?
+- overall_attractiveness_score (0-100): Composite investment attractiveness of the space
+
+## OUTPUT FORMAT
+
+Return ONLY valid JSON:
+
+{
+  "valuation": {
+    "overall_attractiveness_score": 0-100,
+    "market_size_score": 0-100,
+    "comparable_score": 0-100,
+    "stage_fit_score": 0-100,
+    "tam_estimate": "string e.g. '$5B global market for X'",
+    "comparables": [
+      {"name": "string", "outcome": "string", "relevance": "string"}
+    ],
+    "return_potential": "string — realistic upside narrative for a winner in this space",
+    "key_risks": ["specific valuation risks for this space"],
+    "narrative": "3-4 sentences with specific evidence about this space's investment potential"
+  },
+  "valuation_agent_summary": "2-3 sentence summary of this space's attractiveness for GO/NOGO assessment"
+}
+
+Be specific about comparable companies — name real companies in or adjacent to this space. Use null for unknown scores.
+"""
+
+TOPIC_SYSTEM_PROMPT_RISK_AVERSE = """
+You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
+Your role is to assess the venture attractiveness of this space via market sizing and comparable outcomes.
+
+RISK TOLERANCE: RISK_AVERSE — focus on downside protection; require strong evidence for high scores.
+
+## WHAT TO ASSESS
+
+1. **Market size**: Require evidence of real demand — not theoretical TAM.
+2. **Comparable companies**: Weight failures and mediocre exits heavily. Crowded space with big exits = mixed signal.
+3. **Stage-appropriate opportunity**: Has the space been captured? Late-stage dominance = fewer Seed/A/B opportunities.
+4. **Return potential**: Be conservative — what's the realistic base case for a new entrant?
+5. **Key risks**: Commoditization by foundation model providers, incumbent lock-in, regulatory headwinds?
+
+## VALUATION SCORES
+
+- market_size_score: Require demonstrated demand. Speculative TAM = 0-40.
+- comparable_score: Weight failures. Crowded space with acquisition exits only = 0-50.
+- stage_fit_score: If space is dominated by Series C+ players, score low (0-40).
+- overall_attractiveness_score: Cannot exceed 60 if any major risk is unaddressed.
+
+## OUTPUT FORMAT
+
+Return ONLY valid JSON:
+
+{
+  "valuation": {
+    "overall_attractiveness_score": 0-100,
+    "market_size_score": 0-100,
+    "comparable_score": 0-100,
+    "stage_fit_score": 0-100,
+    "tam_estimate": "string — be conservative",
+    "comparables": [
+      {"name": "string", "outcome": "string", "relevance": "string"}
+    ],
+    "return_potential": "string — realistic base case for a new entrant, not best case",
+    "key_risks": ["all material risks for this space — be thorough"],
+    "narrative": "3-4 sentences — call out risks explicitly"
+  },
+  "valuation_agent_summary": "2-3 sentence conservative assessment of this space"
+}
+
+Name real comparable companies. Highlight failures. Be honest about commoditization and timing risk.
+"""
+
 SYSTEM_PROMPT_RISK_NEUTRAL = """
 You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
 Your role is to assess investment attractiveness via comparable analysis and return potential.
@@ -117,25 +209,31 @@ class ValuationAgent:
         self._tavily = TavilyClient()
         self._llm = AnthropicClient()
 
-    def run(self, company: str, risk_tolerance: str | None = None) -> AgentMessage:
-        """Analyze investment attractiveness for a company.
+    def run(self, company: str, risk_tolerance: str | None = None, is_topic: bool = False) -> AgentMessage:
+        """Analyze investment attractiveness for a company or investment space.
 
         Args:
-            company: Company name to analyze.
+            company: Company name or topic/space to analyze.
             risk_tolerance: Optional override.
+            is_topic: If True, analyze the space's venture attractiveness rather than a single company.
 
         Returns:
             AgentMessage with JSON-structured valuation analysis.
         """
         rt = risk_tolerance or self.risk_tolerance
-        system_prompt = (
-            SYSTEM_PROMPT_RISK_AVERSE if rt == "risk_averse" else SYSTEM_PROMPT_RISK_NEUTRAL
-        )
+        if is_topic:
+            system_prompt = (
+                TOPIC_SYSTEM_PROMPT_RISK_AVERSE if rt == "risk_averse" else TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL
+            )
+        else:
+            system_prompt = (
+                SYSTEM_PROMPT_RISK_AVERSE if rt == "risk_averse" else SYSTEM_PROMPT_RISK_NEUTRAL
+            )
 
-        logger.info(f"ValuationAgent starting: {company} ({rt})")
+        logger.info(f"ValuationAgent starting: {company} ({rt}, is_topic={is_topic})")
 
-        research = self._gather_research(company)
-        analysis = self._synthesize(company, research, system_prompt)
+        research = self._gather_research(company, is_topic)
+        analysis = self._synthesize(company, research, system_prompt, is_topic)
 
         logger.info(f"ValuationAgent complete: {company}")
         return AgentMessage(
@@ -144,11 +242,17 @@ class ValuationAgent:
             role="analyst",
         )
 
-    def _gather_research(self, company: str) -> str:
-        searches = [
-            f"{company} TAM total addressable market size forecast",
-            f"{company} comparable startup exit IPO acquisition ARR revenue traction",
-        ]
+    def _gather_research(self, company: str, is_topic: bool = False) -> str:
+        if is_topic:
+            searches = [
+                f"{company} AI market size TAM venture opportunity 2025 forecast",
+                f"{company} startup exits acquisitions IPO comparable outcomes seed series-A",
+            ]
+        else:
+            searches = [
+                f"{company} TAM total addressable market size forecast",
+                f"{company} comparable startup exit IPO acquisition ARR revenue traction",
+            ]
 
         query_results: dict[str, list] = {}
         with ThreadPoolExecutor(max_workers=len(searches)) as executor:
@@ -167,8 +271,18 @@ class ValuationAgent:
 
         return "\n".join(results) if results else "No valuation data found."
 
-    def _synthesize(self, company: str, research: str, system_prompt: str) -> str:
-        user_message = f"""Assess the investment attractiveness of this Seed-to-Series B AI startup.
+    def _synthesize(self, company: str, research: str, system_prompt: str, is_topic: bool = False) -> str:
+        if is_topic:
+            user_message = f"""Assess the venture investment attractiveness of this AI investment space.
+
+Space/Topic: {company}
+
+Market and comparable research:
+{research}
+
+Produce the complete JSON valuation analysis per your instructions."""
+        else:
+            user_message = f"""Assess the investment attractiveness of this Seed-to-Series B AI startup.
 
 Company: {company}
 

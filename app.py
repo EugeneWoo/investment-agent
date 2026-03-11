@@ -355,16 +355,20 @@ def _run_judge_mode() -> None:
         st.session_state.pop("judge_result", None)
         st.session_state.pop("judge_config", None)
 
+        is_topic = input_mode == "topic"
         with st.status("Running analysis...", expanded=True) as status:
             try:
                 orchestrator = Orchestrator(risk_tolerance=risk_tolerance)
 
-                st.write("Checking eligibility...")
-                eligible, ineligible_reason = orchestrator.eligibility_check(company)
-                if not eligible:
-                    status.update(label="Company not eligible", state="error")
-                    st.error(f"Not eligible for analysis: {_safe_text(ineligible_reason)}")
-                    st.stop()
+                if is_topic:
+                    st.write("Topic mode: skipping eligibility check...")
+                else:
+                    st.write("Checking eligibility...")
+                    eligible, ineligible_reason = orchestrator.eligibility_check(company)
+                    if not eligible:
+                        status.update(label="Company not eligible", state="error")
+                        st.error(f"Not eligible for analysis: {_safe_text(ineligible_reason)}")
+                        st.stop()
 
                 search_agent = SearchAgent(risk_tolerance)
                 sentiment_agent = SentimentAgent(risk_tolerance)
@@ -372,9 +376,9 @@ def _run_judge_mode() -> None:
 
                 st.write("🔍 📰 📊 Running all 3 agents in parallel...")
                 with ThreadPoolExecutor(max_workers=3) as executor:
-                    f_search = executor.submit(search_agent.run, company, risk_tolerance)
-                    f_sentiment = executor.submit(sentiment_agent.run, company, risk_tolerance)
-                    f_valuation = executor.submit(valuation_agent.run, company, risk_tolerance)
+                    f_search = executor.submit(search_agent.run, company, risk_tolerance, is_topic)
+                    f_sentiment = executor.submit(sentiment_agent.run, company, risk_tolerance, is_topic)
+                    f_valuation = executor.submit(valuation_agent.run, company, risk_tolerance, is_topic)
                     search_msg = f_search.result()
                     sentiment_msg = f_sentiment.result()
                     valuation_msg = f_valuation.result()
@@ -383,7 +387,7 @@ def _run_judge_mode() -> None:
                 st.write("⚖️ Judge: reviewing all three reports...")
                 phase1_messages = [search_msg, sentiment_msg, valuation_msg]
                 full_analysis = orchestrator._format_phase1_summary(phase1_messages)
-                judge_msg, verdict = orchestrator._judge_reports(company, full_analysis, risk_tolerance)
+                judge_msg, verdict = orchestrator._judge_reports(company, full_analysis, risk_tolerance, is_topic=is_topic)
                 st.write("✓ Judge decision complete")
 
                 recommendations = None
@@ -509,16 +513,20 @@ def _run_debate_mode() -> None:
         st.session_state.pop("debate_result", None)
         st.session_state.pop("debate_config", None)
 
+        is_topic = input_mode == "topic"
         with st.status("Running analysis...", expanded=True) as status:
             try:
                 orchestrator = DebateOrchestrator(risk_tolerance=risk_tolerance, max_rounds=max_rounds)
 
-                st.write("Checking eligibility...")
-                eligible, ineligible_reason = orchestrator.eligibility_check(company)
-                if not eligible:
-                    status.update(label="Company not eligible", state="error")
-                    st.error(f"Not eligible for analysis: {_safe_text(ineligible_reason)}")
-                    st.stop()
+                if is_topic:
+                    st.write("Topic mode: skipping eligibility check...")
+                else:
+                    st.write("Checking eligibility...")
+                    eligible, ineligible_reason = orchestrator.eligibility_check(company)
+                    if not eligible:
+                        status.update(label="Company not eligible", state="error")
+                        st.error(f"Not eligible for analysis: {_safe_text(ineligible_reason)}")
+                        st.stop()
 
                 st.write("🔍 📰 📊 Running all 3 agents in parallel...")
 
@@ -531,7 +539,7 @@ def _run_debate_mode() -> None:
                         return
                     st.write(msg)
 
-                result = orchestrator.run(company, risk_tolerance, status_callback=status_callback)
+                result = orchestrator.run(company, risk_tolerance, status_callback=status_callback, is_topic=is_topic)
 
                 st.session_state["debate_result"] = result
                 st.session_state["debate_config"] = {

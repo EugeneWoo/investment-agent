@@ -123,6 +123,7 @@ class DebateOrchestrator:
         risk_tolerance: str,
         phase1_map: dict[str, AgentMessage],
         status_callback: StatusCallback = None,
+        is_topic: bool = False,
     ) -> tuple[list[DebateRound], str, bool]:
         """Run the round-robin adversarial debate.
 
@@ -172,6 +173,7 @@ class DebateOrchestrator:
                     debate_history=debate_history,
                     round_number=round_number,
                     risk_tolerance=risk_tolerance,
+                    is_topic=is_topic,
                 )
                 round_positions.append(position)
 
@@ -227,13 +229,14 @@ class DebateOrchestrator:
 
         return debate_rounds, final_verdict, False
 
-    def run(self, company: str, risk_tolerance: str | None = None, status_callback: StatusCallback = None) -> DebateResult:
+    def run(self, company: str, risk_tolerance: str | None = None, status_callback: StatusCallback = None, is_topic: bool = False) -> DebateResult:
         """Run full analysis: Phase 1 (independent agents) → Phase 2 (debate).
 
         Args:
-            company: Company name or description to analyze.
+            company: Company name or topic/space to analyze.
             risk_tolerance: Optional override of instance default.
             status_callback: Optional callback for progress updates.
+            is_topic: If True, skip eligibility and reframe agents around the space.
 
         Returns:
             DebateResult with final verdict and all messages including debate rounds.
@@ -241,15 +244,15 @@ class DebateOrchestrator:
         rt = risk_tolerance or self.risk_tolerance
 
         # Phase 1: Run independent agents (reuse base orchestrator)
-        logger.info(f"DebateOrchestrator starting Phase 1: {company}")
+        logger.info(f"DebateOrchestrator starting Phase 1: {company} (is_topic={is_topic})")
         if status_callback:
             status_callback("Running Phase 1: independent agent analysis...")
 
         # Get Phase 1 messages from base agents — run in parallel
         with ThreadPoolExecutor(max_workers=3) as executor:
-            f_search = executor.submit(self._search_debate.base_agent.run, company, rt)
-            f_sentiment = executor.submit(self._sentiment_debate.base_agent.run, company, rt)
-            f_valuation = executor.submit(self._valuation_debate.base_agent.run, company, rt)
+            f_search = executor.submit(self._search_debate.base_agent.run, company, rt, is_topic)
+            f_sentiment = executor.submit(self._sentiment_debate.base_agent.run, company, rt, is_topic)
+            f_valuation = executor.submit(self._valuation_debate.base_agent.run, company, rt, is_topic)
             search_msg = f_search.result()
             sentiment_msg = f_sentiment.result()
             valuation_msg = f_valuation.result()
@@ -266,6 +269,7 @@ class DebateOrchestrator:
             company=company,
             risk_tolerance=rt,
             phase1_map=phase1_map,
+            is_topic=is_topic,
             status_callback=status_callback,
         )
 

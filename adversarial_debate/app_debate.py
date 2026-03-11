@@ -318,22 +318,26 @@ if run_btn and company:
     st.session_state.pop("debate_result", None)
     st.session_state.pop("agent_messages", None)
 
+    is_topic = input_mode == "topic"
     with st.status("Running analysis...", expanded=True) as status:
         try:
             orchestrator = DebateOrchestrator(risk_tolerance=risk_tolerance, max_rounds=max_rounds)
 
-            st.write("Checking eligibility...")
-            eligible, ineligible_reason = orchestrator.eligibility_check(company)
-            if not eligible:
-                status.update(label="Company not eligible", state="error")
-                st.error(f"**Not eligible for analysis:** {ineligible_reason}")
-                st.stop()
+            if is_topic:
+                st.write("Topic mode: skipping eligibility check...")
+            else:
+                st.write("Checking eligibility...")
+                eligible, ineligible_reason = orchestrator.eligibility_check(company)
+                if not eligible:
+                    status.update(label="Company not eligible", state="error")
+                    st.error(f"**Not eligible for analysis:** {ineligible_reason}")
+                    st.stop()
 
             def status_callback(msg: str) -> None:
                 """Callback to update status during debate."""
                 st.write(msg)
 
-            result = orchestrator.run(company, risk_tolerance, status_callback=status_callback)
+            result = orchestrator.run(company, risk_tolerance, status_callback=status_callback, is_topic=is_topic)
 
             st.session_state["debate_result"] = result
             st.session_state["agent_messages"] = [m for m in result.messages if m.role == "analyst"]

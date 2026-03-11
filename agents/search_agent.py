@@ -12,6 +12,115 @@ from tools.tavily import TavilyClient
 
 logger = logging.getLogger(__name__)
 
+TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL = """
+You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
+Analyze TWO dimensions: (1) Founder Archetype Quality across the space and (2) Market Gap Validation for the theme.
+
+RISK TOLERANCE: RISK_NEUTRAL — give the space the benefit of the doubt on ambiguous signals.
+
+## PART 1: FOUNDER ARCHETYPE IN THIS SPACE
+
+For this space, evaluate the typical successful founder profile:
+- What domain background tends to win here?
+- Is deep technical expertise required, or is domain/industry expertise the key?
+- What team compositions have succeeded (solo technical founder, technical + business co-founders, etc.)?
+
+Synthesize into founder_quality_score (0-100) representing how well-suited the typical winning founder archetype is for venture outcomes.
+
+## PART 2: MARKET GAP VALIDATION
+
+- bandwagon_risk_score (0-100, 100=highly crowded/commoditized):
+  Red flags: many well-funded incumbents, rapid commoditization, low differentiation across players
+  Green flags: few defensible players, proprietary data opportunities, workflow complexity creating moats
+- defensibility_score (0-100): Are there structural moats available in this space — exclusive data, network effects, regulatory barriers?
+- market_gap_score = weighted synthesis (defensibility 40%, inverse bandwagon risk 30%, competitive differentiation 30%)
+
+## OUTPUT FORMAT
+
+Return ONLY valid JSON — no markdown, no preamble:
+
+{
+  "company": {
+    "name": "string (the topic/space name)",
+    "description": "string (description of this investment space)",
+    "funding_stage": "space-analysis",
+    "source_urls": ["string"]
+  },
+  "founders": [],
+  "founder_analysis": {
+    "founder_quality_score": 0-100,
+    "complementarity_score": null,
+    "narrative": "3-4 sentences describing the winning founder archetype in this space"
+  },
+  "market_analysis": {
+    "market_gap_score": 0-100,
+    "bandwagon_risk_score": 0-100,
+    "defensibility_score": 0-100,
+    "differentiation": "2-3 sentences on differentiation opportunities in this space",
+    "competitors": [{"name": "string", "differentiation": "string"}],
+    "bandwagon_evidence": ["crowding or commoditization signals found"],
+    "defensibility_narrative": "2-3 sentences on structural moats available"
+  },
+  "search_agent_summary": "2-3 sentence executive summary of this investment space for GO/NOGO assessment"
+}
+
+Cite specific companies or signals as examples — never generic claims. Use null for unknown numeric fields.
+"""
+
+TOPIC_SYSTEM_PROMPT_RISK_AVERSE = """
+You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
+Analyze TWO dimensions: (1) Founder Archetype Quality across the space and (2) Market Gap Validation for the theme.
+
+RISK TOLERANCE: RISK_AVERSE — require strong evidence for positive signals; treat ambiguity as risk.
+
+## PART 1: FOUNDER ARCHETYPE IN THIS SPACE
+
+For this space, evaluate what it takes for founders to win:
+- Is the bar for domain expertise very high? Treat weak archetype fit as a red flag.
+- Solo-founder-prone spaces are higher risk. Require clear evidence of winning team archetypes.
+
+Synthesize into founder_quality_score with a conservative lens — ambiguity = lower score.
+
+## PART 2: MARKET GAP VALIDATION
+
+- bandwagon_risk_score: Low threshold — if multiple well-funded players exist, score above 50.
+- defensibility_score: Only proven structural moats count. Theoretical moats = 0-30.
+- market_gap_score: Crowded OR no defensibility = cap at 50.
+
+## OUTPUT FORMAT
+
+Return ONLY valid JSON — no markdown, no preamble:
+
+{
+  "company": {
+    "name": "string (the topic/space name)",
+    "description": "string (description of this investment space)",
+    "funding_stage": "space-analysis",
+    "source_urls": ["string"]
+  },
+  "founders": [],
+  "founder_analysis": {
+    "founder_quality_score": 0-100,
+    "complementarity_score": null,
+    "narrative": "3-4 sentences — highlight risks in the founder archetype for this space"
+  },
+  "market_analysis": {
+    "market_gap_score": 0-100,
+    "bandwagon_risk_score": 0-100,
+    "defensibility_score": 0-100,
+    "differentiation": "2-3 sentences — be honest if differentiation is weak",
+    "competitors": [{"name": "string", "differentiation": "string"}],
+    "bandwagon_evidence": ["crowding or commoditization red flags"],
+    "defensibility_narrative": "2-3 sentences — call out lack of moats clearly"
+  },
+  "search_agent_summary": "2-3 sentence summary with clear risk assessment for this space"
+}
+
+Cite specific companies or signals. Flag concerns explicitly. Use null for unknown numeric fields.
+"""
+
 SYSTEM_PROMPT_RISK_NEUTRAL = """
 You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
 Analyze TWO dimensions: (1) Founder Quality and (2) Market Gap Validation.
@@ -183,25 +292,31 @@ class SearchAgent:
         self._tavily = TavilyClient()
         self._llm = AnthropicClient()
 
-    def run(self, company: str, risk_tolerance: str | None = None) -> AgentMessage:
+    def run(self, company: str, risk_tolerance: str | None = None, is_topic: bool = False) -> AgentMessage:
         """Run full analysis: discover company → research founders → validate market gap → synthesize.
 
         Args:
-            company: Company name or description to analyze.
+            company: Company name or topic/space to analyze.
             risk_tolerance: Optional override; uses instance default if not provided.
+            is_topic: If True, analyze as an investment space rather than a single company.
 
         Returns:
             AgentMessage with JSON-structured analysis in content field.
         """
         rt = risk_tolerance or self.risk_tolerance
-        system_prompt = (
-            SYSTEM_PROMPT_RISK_AVERSE if rt == "risk_averse" else SYSTEM_PROMPT_RISK_NEUTRAL
-        )
+        if is_topic:
+            system_prompt = (
+                TOPIC_SYSTEM_PROMPT_RISK_AVERSE if rt == "risk_averse" else TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL
+            )
+        else:
+            system_prompt = (
+                SYSTEM_PROMPT_RISK_AVERSE if rt == "risk_averse" else SYSTEM_PROMPT_RISK_NEUTRAL
+            )
 
-        logger.info(f"SearchAgent starting analysis: {company} ({rt})")
+        logger.info(f"SearchAgent starting analysis: {company} ({rt}, is_topic={is_topic})")
 
-        research = self._gather_research(company)
-        analysis = self._synthesize(company, research, system_prompt)
+        research = self._gather_research(company, is_topic)
+        analysis = self._synthesize(company, research, system_prompt, is_topic)
 
         logger.info(f"SearchAgent complete: {company}")
         return AgentMessage(
@@ -210,13 +325,20 @@ class SearchAgent:
             role="analyst",
         )
 
-    def _gather_research(self, company: str) -> str:
+    def _gather_research(self, company: str, is_topic: bool = False) -> str:
         """Run Tavily searches in parallel to gather company, founder, and competitor data."""
-        searches = [
-            f"{company} product technology use case competitors differentiation",
-            f"{company} funding round seed investors announced",
-            f"{company} CEO CTO founder LinkedIn biography background",
-        ]
+        if is_topic:
+            searches = [
+                f"{company} AI startups seed series-A landscape competitive market 2025",
+                f"{company} venture capital investment thesis moat defensibility",
+                f"{company} notable founders background domain expertise team archetype",
+            ]
+        else:
+            searches = [
+                f"{company} product technology use case competitors differentiation",
+                f"{company} funding round seed investors announced",
+                f"{company} CEO CTO founder LinkedIn biography background",
+            ]
 
         query_results: dict[str, list] = {}
         with ThreadPoolExecutor(max_workers=len(searches)) as executor:
@@ -235,9 +357,19 @@ class SearchAgent:
 
         return "\n".join(results) if results else "No search results found."
 
-    def _synthesize(self, company: str, research: str, system_prompt: str) -> str:
+    def _synthesize(self, company: str, research: str, system_prompt: str, is_topic: bool = False) -> str:
         """Send research to Claude for structured analysis."""
-        user_message = f"""Analyze this Seed-to-Series B AI startup for investment potential.
+        if is_topic:
+            user_message = f"""Analyze this investment space for venture capital potential.
+
+Space/Topic: {company}
+
+Research gathered:
+{research}
+
+Produce the complete JSON analysis per your instructions."""
+        else:
+            user_message = f"""Analyze this Seed-to-Series B AI startup for investment potential.
 
 Company: {company}
 
