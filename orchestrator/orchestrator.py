@@ -129,6 +129,54 @@ class Orchestrator:
         self._valuation = ValuationAgent(risk_tolerance)
         self._llm = AnthropicClient()
 
+    @staticmethod
+    def detect_input_type(text: str) -> str | None:
+        """Heuristically detect whether input looks like a company name or a topic/space.
+
+        Returns "company" if input looks like a specific company name when set to topic mode,
+        "topic" if input looks like a space/theme when set to company mode, or None if unclear.
+
+        Used to show a corrective warning in the UI — does not block execution.
+        """
+        if not text or not text.strip():
+            return None
+
+        t = text.strip()
+        lower = t.lower()
+
+        # URLs are always company inputs
+        if lower.startswith(("http://", "https://", "www.")) or (
+            "." in t and " " not in t and len(t) < 60
+        ):
+            return "company"
+
+        words = t.split()
+        word_count = len(words)
+
+        # Strong topic signals
+        topic_keywords = {
+            "startups", "companies", "space", "sector", "industry", "market",
+            "tools", "software", "platforms", "solutions", "systems",
+            "for ", "in ", "using ", "with ai", "ai for", "ai in",
+            "vertical", "applications", "landscape",
+        }
+        has_topic_keyword = any(kw in lower for kw in topic_keywords)
+
+        # Strong company signals: short, title-cased or ends with known company suffixes
+        company_suffixes = (".ai", " ai", "inc", "corp", "labs", "hq", ".io", "llc")
+        has_company_suffix = any(lower.endswith(s) or lower.startswith(s.strip()) for s in company_suffixes)
+        is_short = word_count <= 3
+        is_title_case = all(w[0].isupper() for w in words if w and w[0].isalpha())
+
+        looks_like_company = is_short and (is_title_case or has_company_suffix)
+        looks_like_topic = has_topic_keyword or word_count >= 4
+
+        if looks_like_company and not has_topic_keyword:
+            return "company"
+        if looks_like_topic and not has_company_suffix:
+            return "topic"
+        return None
+
     def eligibility_check(self, company: str) -> tuple[bool, str]:
         """Check eligibility using two complementary web searches.
 

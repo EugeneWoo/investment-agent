@@ -44,6 +44,20 @@ def _safe_text(text: str) -> str:
     return _escape_dollars(text).replace("`", "'")
 
 
+def _input_type_warning(input_mode: str) -> None:
+    """Show a sidebar warning if the typed input looks mismatched with the selected input type."""
+    from orchestrator.orchestrator import Orchestrator
+    current_input = st.session_state.get("company_input", "").strip()
+    if not current_input:
+        return
+    detected = Orchestrator.detect_input_type(current_input)
+    if detected and detected != input_mode:
+        if detected == "company":
+            st.sidebar.warning('This looks like a company name. Switch to "Specific company" above.')
+        else:
+            st.sidebar.warning('This looks like a topic or space. Switch to "Topic / space" above.')
+
+
 def _summarise_position(agent_name: str, position: str, rationale: str) -> str:
     """Return a single plain sentence summarising the agent's final stance."""
     from tools.anthropic import AnthropicClient
@@ -335,6 +349,7 @@ def _run_judge_mode() -> None:
         )
         st.divider()
         st.caption("3 independent agents → Judge issues GO/NOGO")
+        _input_type_warning(input_mode)
 
     # Input
     _placeholder = "e.g. Anthropic, Harvey AI" if input_mode == "company" else "e.g. AI medical imaging, legal AI startups"
@@ -496,6 +511,7 @@ def _run_debate_mode() -> None:
         )
         st.divider()
         st.caption("3 independent agents → adversarial debate → consensus or majority vote")
+        _input_type_warning(input_mode)
 
     # Input
     _placeholder = "e.g. Anthropic, Harvey AI" if input_mode == "company" else "e.g. AI medical imaging, legal AI startups"
