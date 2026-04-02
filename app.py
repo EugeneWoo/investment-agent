@@ -362,6 +362,10 @@ def _run_judge_mode() -> None:
 
     # Run
     if run_btn and company:
+        if len(company.strip()) > 200:
+            st.warning("Input is too long (max 200 characters). Please shorten and try again.")
+            st.stop()
+
         from agents.search_agent import SearchAgent
         from agents.sentiment_agent import SentimentAgent
         from agents.valuation_agent import ValuationAgent
@@ -524,6 +528,10 @@ def _run_debate_mode() -> None:
 
     # Run
     if run_btn and company:
+        if len(company.strip()) > 200:
+            st.warning("Input is too long (max 200 characters). Please shorten and try again.")
+            st.stop()
+
         from adversarial_debate.orchestrator import DebateOrchestrator
 
         st.session_state.pop("debate_result", None)

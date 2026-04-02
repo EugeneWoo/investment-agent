@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+import anthropic
 from anthropic import Anthropic
 from anthropic.types import Message
 from tenacity import (
@@ -36,9 +37,7 @@ class AnthropicClient:
 
     @retry(
         retry=retry_if_exception_type(
-            (
-                Exception,  # Anthropic can raise various exceptions
-            )
+            (anthropic.APIConnectionError, anthropic.RateLimitError)
         ),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
@@ -110,9 +109,6 @@ class AnthropicClient:
                 return ""
 
         except Exception as e:
-            error_msg = (
-                f"Anthropic API call failed for message"
-                f" (first 100 chars): '{user_message[:100]}...': {e}"
-            )
+            error_msg = f"Anthropic API call failed: {e}"
             logger.error(error_msg)
             raise RuntimeError(error_msg) from e

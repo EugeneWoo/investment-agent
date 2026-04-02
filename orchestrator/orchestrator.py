@@ -231,9 +231,17 @@ Web search results:
             json_end = raw.rfind("}") + 1
             data = json.loads(raw[json_start:json_end])
 
-            listed_conf = int(data.get("listed_confidence", 0))
-            not_ai_conf = int(data.get("not_ai_native_confidence", 0))
-            late_stage_conf = int(data.get("late_stage_confidence", 0))
+            def _safe_conf(key: str) -> int:
+                val = data.get(key, 0)
+                try:
+                    return int(val)
+                except (TypeError, ValueError):
+                    logger.warning(f"Eligibility field '{key}' has unexpected value {val!r}, defaulting to 0")
+                    return 0
+
+            listed_conf = _safe_conf("listed_confidence")
+            not_ai_conf = _safe_conf("not_ai_native_confidence")
+            late_stage_conf = _safe_conf("late_stage_confidence")
             logger.info(
                 f"Eligibility check for '{company}': "
                 f"listed_confidence={listed_conf}, not_ai_native_confidence={not_ai_conf}, "
