@@ -270,7 +270,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("Investment Agent — Adversarial Debate")
-st.caption("Multi-agent analysis for Seed-to-Series B AI startups, with round-robin debate until consensus or maximum rounds is reached")
+st.caption("Multi-agent analysis for Seed-to-Series C AI startups, with round-robin debate until consensus or maximum rounds is reached")
 
 # --- Sidebar ---
 with st.sidebar:

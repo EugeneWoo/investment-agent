@@ -13,7 +13,7 @@ from tools.tavily import TavilyClient
 logger = logging.getLogger(__name__)
 
 TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Valuation Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
 Your role is to assess the venture attractiveness of this space via market sizing and comparable outcomes.
 
@@ -23,7 +23,7 @@ RISK TOLERANCE: RISK_NEUTRAL — balanced view on upside vs. downside.
 
 1. **Market size**: What is the TAM for companies in this space? Is it large enough for venture-scale outcomes?
 2. **Comparable companies and outcomes**: What startups in this space have succeeded or failed? What were their outcomes?
-3. **Stage-appropriate opportunity**: Are there still Seed-to-Series B opportunities available, or has the space been captured by late-stage players?
+3. **Stage-appropriate opportunity**: Are there still Seed-to-Series C opportunities available, or has the space been captured by late-stage players?
 4. **Return potential**: What's the realistic upside for a new entrant winning in this space?
 5. **Key risks to valuation**: Competition from incumbents, commoditization, market timing?
 
@@ -31,7 +31,7 @@ RISK TOLERANCE: RISK_NEUTRAL — balanced view on upside vs. downside.
 
 - market_size_score (0-100): TAM attractiveness for venture returns in this space
 - comparable_score (0-100): How do comparable company outcomes suggest the space could perform?
-- stage_fit_score (0-100): Are there meaningful Seed-to-Series B opportunities remaining in this space?
+- stage_fit_score (0-100): Are there meaningful Seed-to-Series C opportunities remaining in this space?
 - overall_attractiveness_score (0-100): Composite investment attractiveness of the space
 
 ## OUTPUT FORMAT
@@ -59,7 +59,7 @@ Be specific about comparable companies — name real companies in or adjacent to
 """
 
 TOPIC_SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Valuation Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
 Your role is to assess the venture attractiveness of this space via market sizing and comparable outcomes.
 
@@ -77,7 +77,7 @@ RISK TOLERANCE: RISK_AVERSE — focus on downside protection; require strong evi
 
 - market_size_score: Require demonstrated demand. Speculative TAM = 0-40.
 - comparable_score: Weight failures. Crowded space with acquisition exits only = 0-50.
-- stage_fit_score: If space is dominated by Series C+ players, score low (0-40).
+- stage_fit_score: If space is dominated by Series D+ players, score low (0-40).
 - overall_attractiveness_score: Cannot exceed 60 if any major risk is unaddressed.
 
 ## OUTPUT FORMAT
@@ -105,7 +105,7 @@ Name real comparable companies. Highlight failures. Be honest about commoditizat
 """
 
 SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Valuation Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 Your role is to assess investment attractiveness via comparable analysis and return potential.
 
 RISK TOLERANCE: RISK_NEUTRAL — balanced view on upside vs. downside.
@@ -123,7 +123,7 @@ RISK TOLERANCE: RISK_NEUTRAL — balanced view on upside vs. downside.
 - market_size_score (0-100): TAM attractiveness for venture returns
   90-100: Massive market (>$10B TAM) | 70-89: Large ($1-10B) | 50-69: Medium ($100M-1B) | 0-49: Small/niche
 - comparable_score (0-100): How do comparables suggest this could perform?
-- stage_fit_score (0-100): Are milestones appropriate for stage? Seed: prototype+team. Series A: traction+PMF. Series B: proven growth+retention.
+- stage_fit_score (0-100): Are milestones appropriate for stage? Seed: prototype+team. Series A: traction+PMF. Series B: proven growth+retention. Series C: scaled revenue+unit economics.
 - overall_attractiveness_score (0-100): Composite investment attractiveness
 
 ## OUTPUT FORMAT
@@ -151,7 +151,7 @@ Be specific about comparables — name real companies. Use null for unknown scor
 """
 
 SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Valuation Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Valuation Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 Your role is to assess investment attractiveness via comparable analysis and return potential.
 
 RISK TOLERANCE: RISK_AVERSE — focus on downside protection; require strong evidence for high scores.
@@ -168,7 +168,7 @@ RISK TOLERANCE: RISK_AVERSE — focus on downside protection; require strong evi
 
 - market_size_score: Require demonstrated demand, not TAM estimates. Theoretical markets = 0-40.
 - comparable_score: Weight comparable failures heavily. Crowded space with big exits = mixed signal.
-- stage_fit_score: Score against stage expectations. Series B without retention data = 0-40. Series A without PMF = 0-50.
+- stage_fit_score: Score against stage expectations. Series C without unit economics = 0-40. Series B without retention data = 0-40. Series A without PMF = 0-50.
 - overall_attractiveness_score: Cannot exceed 60 if any major risk is unaddressed.
 
 ## OUTPUT FORMAT
@@ -282,7 +282,7 @@ Market and comparable research:
 
 Produce the complete JSON valuation analysis per your instructions."""
         else:
-            user_message = f"""Assess the investment attractiveness of this Seed-to-Series B AI startup.
+            user_message = f"""Assess the investment attractiveness of this Seed-to-Series C AI startup.
 
 Company: {company}
 

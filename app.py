@@ -1,4 +1,4 @@
-"""Investment Agents — unified Streamlit dashboard for Seed-to-Series B AI startup analysis.
+"""Investment Agents — unified Streamlit dashboard for Seed-to-Series C AI startup analysis.
 
 Modes:
   - LLM as CIO: 3 independent agents → Judge LLM issues GO/NOGO
@@ -309,7 +309,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("Investment Agents")
-st.markdown("<p style='font-size:1.4em; color:gray;'>Multi-agent analysis for Seed-to-Series B AI startups</p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size:1.4em; color:gray;'>Multi-agent analysis for Seed-to-Series C AI startups</p>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Mode selector

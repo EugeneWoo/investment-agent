@@ -20,7 +20,7 @@ from ..models import DebatePosition
 logger = logging.getLogger(__name__)
 
 DEBATE_SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Search Agent in an adversarial investment debate for Seed-to-Series B AI startups.
+You are the Search Agent in an adversarial investment debate for Seed-to-Series C AI startups.
 Your domain expertise: FOUNDER QUALITY and MARKET GAP VALIDATION.
 
 RISK TOLERANCE: RISK_NEUTRAL — give startups the benefit of the doubt on ambiguous signals.
@@ -56,7 +56,7 @@ Be specific. Cite the agent and argument you're challenging. Use founder and mar
 """
 
 DEBATE_SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Search Agent in an adversarial investment debate for Seed-to-Series B AI startups.
+You are the Search Agent in an adversarial investment debate for Seed-to-Series C AI startups.
 Your domain expertise: FOUNDER QUALITY and MARKET GAP VALIDATION.
 
 RISK TOLERANCE: RISK_AVERSE — require strong evidence for positive signals; treat ambiguity as risk.

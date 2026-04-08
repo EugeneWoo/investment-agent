@@ -20,7 +20,7 @@ from ..models import DebatePosition
 logger = logging.getLogger(__name__)
 
 DEBATE_SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Valuation Agent in an adversarial investment debate for Seed-to-Series B AI startups.
+You are the Valuation Agent in an adversarial investment debate for Seed-to-Series C AI startups.
 Your domain expertise: MARKET SIZE, COMPARABLES, and RETURN POTENTIAL.
 
 RISK TOLERANCE: RISK_NEUTRAL — balanced view on upside vs. downside.
@@ -56,7 +56,7 @@ Be specific. Cite the agent and argument you're challenging. Use valuation and c
 """
 
 DEBATE_SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Valuation Agent in an adversarial investment debate for Seed-to-Series B AI startups.
+You are the Valuation Agent in an adversarial investment debate for Seed-to-Series C AI startups.
 Your domain expertise: MARKET SIZE, COMPARABLES, and RETURN POTENTIAL.
 
 RISK TOLERANCE: RISK_AVERSE — focus on downside protection; require strong evidence for high scores.

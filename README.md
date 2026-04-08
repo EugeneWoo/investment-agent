@@ -1,6 +1,6 @@
 # Investment Agents
 
-Multi-agent AI system for analyzing Seed-to-Series B AI startups. Both modes are available in a single unified app (`app.py`), selectable via a radio toggle at the top.
+Multi-agent AI system for analyzing Seed-to-Series C AI startups. Both modes are available in a single unified app (`app.py`), selectable via a radio toggle at the top.
 
 ## How it works
 

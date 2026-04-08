@@ -15,7 +15,7 @@ from tools.tavily import TavilyClient
 logger = logging.getLogger(__name__)
 
 ELIGIBILITY_SYSTEM_PROMPT = """
-You are a pre-screening filter for an investment analysis system focused on Seed-to-Series B AI startups and companies that have meaningfully integrated AI/LLMs into their products.
+You are a pre-screening filter for an investment analysis system focused on Seed-to-Series C AI startups and companies that have meaningfully integrated AI/LLMs into their products.
 
 You will be given a company name and web search results (which may include Crunchbase data). Use the search results as ground truth.
 Score your confidence (0–100) on each criterion.
@@ -24,12 +24,12 @@ IMPORTANT: If search results describe a completely different company (e.g., diff
 treat this as inconclusive information and score confidence LOW (<80) to allow through for manual review.
 
 CRITERION 1 — PUBLIC LISTING (BLOCK if >80):
-We ONLY invest in private companies (Seed-to-Series B). Publicly traded companies should be BLOCKED.
+We ONLY invest in private companies (Seed-to-Series C). Publicly traded companies should be BLOCKED.
 - Score listed_confidence HIGH (>80) ONLY if search results CONFIRM the company is currently publicly traded
 - CONFIRMED evidence: active ticker symbol (e.g., $PLTR), current stock price, confirmed completed IPO
 - Score listed_confidence LOW (0-20) if the company is private, pre-IPO, venture-backed, or has raised funding rounds
 - Do NOT score high for: IPO speculation/rumours, comparisons to public companies, valuation estimates, or funding announcements
-- "Series A/B/C funding", "valued at $Xbn", "raised $X" = PRIVATE company signals → score LOW
+- "Series A/B/C/D funding", "valued at $Xbn", "raised $X" = PRIVATE company signals → score LOW
 
 CRITERION 2 — AI-NATIVE (BLOCK if >80):
 We ONLY invest in AI-native companies. Non-AI companies should be BLOCKED.
@@ -47,11 +47,11 @@ DOES NOT QUALIFY:
 - Energy, oil & gas, utilities, or other non-tech industries
 
 CRITERION 3 — FUNDING STAGE (BLOCK if >80):
-We ONLY invest in Seed-to-Series B companies. Series C and beyond should be BLOCKED.
+We ONLY invest in Seed-to-Series C companies. Series D and beyond should be BLOCKED.
 Crunchbase is the authoritative source for funding stage. If Crunchbase data is absent or inconclusive, default to score 0 — do NOT infer stage from funding amount, valuation, or company size.
-- Score late_stage_confidence 90-100 if Crunchbase explicitly states last_funding_type is "series_c", "series_d", "series_e", or later
-- Score late_stage_confidence 90-100 if at least one credible source (news outlet, press release, or Crunchbase) reports a confirmed closed Series C, D, or E round with a specific dollar amount and round label (e.g. "Company X closes $Xm Series C") — Crunchbase profile pages are paywalled, so news is a valid fallback
-- Score late_stage_confidence 0-20 if last funding is Seed, Series A, or Series B
+- Score late_stage_confidence 90-100 if Crunchbase explicitly states last_funding_type is "series_d", "series_e", or later
+- Score late_stage_confidence 90-100 if at least one credible source (news outlet, press release, or Crunchbase) reports a confirmed closed Series D or E round with a specific dollar amount and round label (e.g. "Company X closes $Xm Series D") — Crunchbase profile pages are paywalled, so news is a valid fallback
+- Score late_stage_confidence 0-20 if last funding is Seed, Series A, Series B, or Series C
 - Score late_stage_confidence 0 if Crunchbase data is missing or ambiguous AND news only speculates without a confirmed close
 - Score late_stage_confidence 0 if Crunchbase says "Venture - Series Unknown" and news provides no confirmed round label
 - Do NOT score above 0 based on funding amount, valuation, or company size alone — only the confirmed round label matters
@@ -59,7 +59,7 @@ Crunchbase is the authoritative source for funding stage. If Crunchbase data is 
 Rules:
 - listed_confidence > 80: BLOCK (company is publicly traded, we only want private)
 - not_ai_native_confidence > 80: BLOCK (company is not AI-native)
-- late_stage_confidence > 80: BLOCK (company is Series C or later, outside our investment stage)
+- late_stage_confidence > 80: BLOCK (company is Series D or later, outside our investment stage)
 - When in doubt on any criterion, score LOW and allow through for manual review
 - The "reason" field must mention ONLY the criterion that caused the block
 
@@ -74,7 +74,7 @@ Respond with ONLY a valid JSON object — no markdown, no text outside the JSON:
 """
 
 JUDGE_SYSTEM_PROMPT = """
-You are an investment Judge for Seed-to-Series B AI startups.
+You are an investment Judge for Seed-to-Series C AI startups.
 
 Three independent analysts have each researched the same startup separately:
 - Search Agent: evaluated founder quality and market gap
@@ -95,7 +95,7 @@ GO|NOGO
 """
 
 JUDGE_TOPIC_SYSTEM_PROMPT = """
-You are an investment Judge evaluating an INVESTMENT SPACE OR THEME for Seed-to-Series B AI startups.
+You are an investment Judge evaluating an INVESTMENT SPACE OR THEME for Seed-to-Series C AI startups.
 
 Three independent analysts have each researched this investment space separately:
 - Search Agent: evaluated the winning founder archetype and market gap / defensibility in this space
@@ -110,7 +110,7 @@ Rules:
 3. Weigh all three dimensions: founder archetype quality, space sentiment, and space valuation
 4. Be decisive — no hedging, no "it depends"
 
-A GO verdict means: this space has strong structural opportunity for new Seed-to-Series B investments right now.
+A GO verdict means: this space has strong structural opportunity for new Seed-to-Series C investments right now.
 A NOGO verdict means: the space is too crowded, too early, too late, or lacks defensibility.
 
 Format:
@@ -181,7 +181,7 @@ class Orchestrator:
         """Check eligibility using two complementary web searches.
 
         Search 1: Crunchbase-focused for authoritative funding/product data.
-        Search 2: Broad news search targeting Series C+ and IPO keywords, since
+        Search 2: Broad news search targeting Series D+ and IPO keywords, since
         Crunchbase profile pages are paywalled and Tavily cannot scrape them.
         Only blocks if confidence > 80 on any criterion.
 
@@ -198,9 +198,9 @@ class Orchestrator:
                 include_domains=["crunchbase.com"],
             )
 
-            # Search 2: Broad news search for latest funding round — catches Series C+ that Crunchbase paywalls
+            # Search 2: Broad news search for latest funding round — catches Series D+ that Crunchbase paywalls
             news_results = tavily.search(
-                f'"{company}" "Series C" OR "Series D" OR "Series E" OR IPO OR "went public" funding round',
+                f'"{company}" "Series D" OR "Series E" OR IPO OR "went public" funding round',
                 max_results=5,
             )
 
@@ -385,7 +385,7 @@ Issue your GO or NOGO verdict with rationale."""
 Based on this analysis:
 {analysis[:2000]}
 
-Name exactly 3 specific Seed-to-Series B AI startups operating in this space that an investor should look at next. For each, provide:
+Name exactly 3 specific Seed-to-Series C AI startups operating in this space that an investor should look at next. For each, provide:
 - Company name
 - One sentence on why it's worth investigating
 

@@ -1,4 +1,4 @@
-"""Search Agent: discovers Seed-to-Series B AI startups and analyzes founder quality + market gap."""
+"""Search Agent: discovers Seed-to-Series C AI startups and analyzes founder quality + market gap."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from tools.tavily import TavilyClient
 logger = logging.getLogger(__name__)
 
 TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Search Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
 Analyze TWO dimensions: (1) Founder Archetype Quality across the space and (2) Market Gap Validation for the theme.
 
@@ -69,7 +69,7 @@ Cite specific companies or signals as examples — never generic claims. Use nul
 """
 
 TOPIC_SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Search Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
 Analyze TWO dimensions: (1) Founder Archetype Quality across the space and (2) Market Gap Validation for the theme.
 
@@ -122,10 +122,10 @@ Cite specific companies or signals. Flag concerns explicitly. Use null for unkno
 """
 
 SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Search Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 Analyze TWO dimensions: (1) Founder Quality and (2) Market Gap Validation.
 
-ELIGIBLE STAGES: pre-seed, seed, Series A, Series B. If the company is Series C or later, set funding_stage accordingly and note it is outside the eligible investment scope.
+ELIGIBLE STAGES: pre-seed, seed, Series A, Series B, Series C. If the company is Series D or later, set funding_stage accordingly and note it is outside the eligible investment scope.
 
 RISK TOLERANCE: RISK_NEUTRAL — give the startup the benefit of the doubt on ambiguous signals.
 
@@ -192,10 +192,10 @@ Cite specific evidence — never generic claims. Use null for unknown numeric fi
 """
 
 SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Search Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Search Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 Analyze TWO dimensions: (1) Founder Quality and (2) Market Gap Validation.
 
-ELIGIBLE STAGES: pre-seed, seed, Series A, Series B. If the company is Series C or later, set funding_stage accordingly and note it is outside the eligible investment scope.
+ELIGIBLE STAGES: pre-seed, seed, Series A, Series B, Series C. If the company is Series D or later, set funding_stage accordingly and note it is outside the eligible investment scope.
 
 RISK TOLERANCE: RISK_AVERSE — require strong evidence for positive signals; treat ambiguity as risk.
 
@@ -280,7 +280,7 @@ def _extract_json(text: str) -> str:
 
 
 class SearchAgent:
-    """Discovers and analyzes Seed-to-Series B AI startups via web search and LLM reasoning."""
+    """Discovers and analyzes Seed-to-Series C AI startups via web search and LLM reasoning."""
 
     def __init__(self, risk_tolerance: str = "risk_neutral") -> None:
         self.risk_tolerance = risk_tolerance
@@ -369,7 +369,7 @@ Research gathered:
 
 Produce the complete JSON analysis per your instructions."""
         else:
-            user_message = f"""Analyze this Seed-to-Series B AI startup for investment potential.
+            user_message = f"""Analyze this Seed-to-Series C AI startup for investment potential.
 
 Company: {company}
 

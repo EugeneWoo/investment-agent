@@ -13,7 +13,7 @@ from tools.tavily import TavilyClient
 logger = logging.getLogger(__name__)
 
 TOPIC_SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
 Your role is to assess public sentiment, press coverage, and community reaction ACROSS this space.
 
@@ -56,7 +56,7 @@ Cite specific articles, posts, or data points. Use null for scores if no data fo
 """
 
 TOPIC_SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 You are analyzing an INVESTMENT SPACE OR THEME — not a single company.
 Your role is to assess public sentiment, press coverage, and community reaction ACROSS this space.
 
@@ -99,7 +99,7 @@ Flag every concern. Hype without substance = flag it. Over-saturation = flag it.
 """
 
 SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 Your role is to assess public sentiment, press coverage, and community reaction to a startup.
 
 RISK TOLERANCE: RISK_NEUTRAL — weigh positive and negative signals equally.
@@ -141,7 +141,7 @@ Cite specific articles, posts, or quotes. Use null for scores if no data found.
 """
 
 SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series B AI startups.
+You are the Sentiment Agent, a specialized investment analyst for Seed-to-Series C AI startups.
 Your role is to assess public sentiment, press coverage, and community reaction to a startup.
 
 RISK TOLERANCE: RISK_AVERSE — weight negative signals heavily; treat absence of coverage as a concern.
@@ -269,7 +269,7 @@ Sentiment research:
 
 Produce the complete JSON sentiment analysis per your instructions."""
         else:
-            user_message = f"""Analyze public sentiment for this Seed-to-Series B AI startup.
+            user_message = f"""Analyze public sentiment for this Seed-to-Series C AI startup.
 
 Company: {company}
 

@@ -20,7 +20,7 @@ from ..models import DebatePosition
 logger = logging.getLogger(__name__)
 
 DEBATE_SYSTEM_PROMPT_RISK_NEUTRAL = """
-You are the Sentiment Agent in an adversarial investment debate for Seed-to-Series B AI startups.
+You are the Sentiment Agent in an adversarial investment debate for Seed-to-Series C AI startups.
 Your domain expertise: PUBLIC SENTIMENT, PRESS COVERAGE, and COMMUNITY REACTION.
 
 RISK TOLERANCE: RISK_NEUTRAL — weigh positive and negative signals equally.
@@ -56,7 +56,7 @@ Be specific. Cite the agent and argument you're challenging. Use sentiment and m
 """
 
 DEBATE_SYSTEM_PROMPT_RISK_AVERSE = """
-You are the Sentiment Agent in an adversarial investment debate for Seed-to-Series B AI startups.
+You are the Sentiment Agent in an adversarial investment debate for Seed-to-Series C AI startups.
 Your domain expertise: PUBLIC SENTIMENT, PRESS COVERAGE, and COMMUNITY REACTION.
 
 RISK TOLERANCE: RISK_AVERSE — weight negative signals heavily; treat absence of coverage as a concern.
